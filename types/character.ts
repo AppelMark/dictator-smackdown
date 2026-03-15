@@ -5,6 +5,8 @@ export enum CharacterArchetype {
   TheNationalist = 'TheNationalist',
   TheAyatollah = 'TheAyatollah',
   TheGeneralissimo = 'TheGeneralissimo',
+  TheOligarch = 'TheOligarch',
+  TheTechMessiah = 'TheTechMessiah',
 }
 
 export interface CharacterStats {

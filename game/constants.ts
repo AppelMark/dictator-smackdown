@@ -99,4 +99,6 @@ export const ARCHETYPE_STATS: Record<CharacterArchetype, ArchetypeConfig> = {
   [CharacterArchetype.TheChairman]: { strength: 70, speed: 70, defense: 90, maxHealth: 110, maxStamina: 100, aiStyle: 'defensive', difficultyRating: 4 },
   [CharacterArchetype.TheAyatollah]: { strength: 80, speed: 50, defense: 85, maxHealth: 105, maxStamina: 95, aiStyle: 'counter', difficultyRating: 5 },
   [CharacterArchetype.TheGeneralissimo]: { strength: 100, speed: 20, defense: 70, maxHealth: 140, maxStamina: 90, aiStyle: 'boss', difficultyRating: 6 },
+  [CharacterArchetype.TheOligarch]: { strength: 80, speed: 55, defense: 60, maxHealth: 105, maxStamina: 105, aiStyle: 'berserker', difficultyRating: 3 },
+  [CharacterArchetype.TheTechMessiah]: { strength: 70, speed: 85, defense: 50, maxHealth: 95, maxStamina: 115, aiStyle: 'speedster', difficultyRating: 4 },
 };

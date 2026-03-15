@@ -22,6 +22,8 @@ export const DEFEAT_TAUNT: Record<CharacterArchetype, string[]> = {
   [CharacterArchetype.TheChairman]: ['Impenetrable!', 'Your punches are nothing!'],
   [CharacterArchetype.TheAyatollah]: ['So predictable!', 'Learn to vary your attacks!'],
   [CharacterArchetype.TheGeneralissimo]: ['I am invincible!', 'Kneel before me!'],
+  [CharacterArchetype.TheOligarch]: ['Money always wins!', 'You cannot afford to beat me!'],
+  [CharacterArchetype.TheTechMessiah]: ['You have been disrupted!', 'My algorithm predicted that!'],
 };
 
 export const ARCHETYPE_CATCHPHRASES: Record<CharacterArchetype, string[]> = {
@@ -31,4 +33,6 @@ export const ARCHETYPE_CATCHPHRASES: Record<CharacterArchetype, string[]> = {
   [CharacterArchetype.TheChairman]: ['Try again!', 'Your efforts are futile!'],
   [CharacterArchetype.TheAyatollah]: ['Predictable!', 'I see your pattern!'],
   [CharacterArchetype.TheGeneralissimo]: ['BOW DOWN!', 'I am the supreme leader!'],
+  [CharacterArchetype.TheOligarch]: ['Everything has a price!', 'I always get what I pay for!'],
+  [CharacterArchetype.TheTechMessiah]: ['Innovation beats tradition!', 'I will disrupt your face!'],
 };
