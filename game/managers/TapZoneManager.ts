@@ -1,98 +1,93 @@
-import { PunchType } from '../../types/battle';
+import { TapZone, PunchType } from '../../types/battle';
 import type { PunchEvent } from '../../types/battle';
-import {
-  TAP_COOLDOWN,
-  TAP_DOUBLE_WINDOW,
-  TAP_HOLD_DURATION,
-  DODGE_MIN_DELTA_X,
-  DODGE_MAX_DURATION_MS,
-} from '../constants';
-
-/** Locally defined since DodgeEvent was removed from the types. */
-interface DodgeEvent {
-  direction: 'left' | 'right';
-  timestamp: number;
-  successful: boolean;
-}
+import { TAP_ZONE_SPLIT, TAP_DOUBLE_WINDOW, TAP_HOLD_DURATION, TAP_COOLDOWN } from '../constants';
 
 export class TapZoneManager {
   private scene: Phaser.Scene;
+  private startX: number = 0;
+  private startY: number = 0;
+  private startTime: number = 0;
   private lastTapTime: number = 0;
-  private lastTapSide: 'left' | 'right' | null = null;
-  private pointerDownTime: number = 0;
-  private pointerDownX: number = 0;
+  private lastTapZone?: TapZone;
+  private cooldownActive: boolean = false;
+  private holdTimer?: Phaser.Time.TimerEvent;
+  private isHolding: boolean = false;
   private comboPosition: number = 0;
-  private lastPunchTime: number = 0;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    this.setupInput();
-  }
 
-  private setupInput(): void {
     this.scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      this.pointerDownTime = pointer.downTime;
-      this.pointerDownX = pointer.x;
+      if (this.cooldownActive) return;
+
+      this.startX = pointer.x;
+      this.startY = pointer.y;
+      this.startTime = Date.now();
+
+      this.holdTimer = this.scene.time.delayedCall(TAP_HOLD_DURATION, () => {
+        this.isHolding = true;
+        this.scene.events.emit('special_charge');
+      });
     });
 
     this.scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (this.holdTimer) {
+        this.holdTimer.destroy();
+        this.holdTimer = undefined;
+      }
+
+      if (this.isHolding) {
+        this.isHolding = false;
+        return;
+      }
+
+      const deltaX = pointer.x - this.startX;
+      const deltaY = pointer.y - this.startY;
+      const tapDuration = Date.now() - this.startTime;
+
+      if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) && tapDuration < 200) {
+        const direction: 'left' | 'right' = deltaX < 0 ? 'left' : 'right';
+        this.scene.events.emit('dodge', { direction });
+        this.startCooldown();
+        return;
+      }
+
+      const zone: TapZone = this.startX < TAP_ZONE_SPLIT ? TapZone.Left : TapZone.Right;
       const now = Date.now();
-      if (now - this.lastPunchTime < TAP_COOLDOWN) return;
+      const timeSinceLastTap = now - this.lastTapTime;
+      const isDoubleTap = this.lastTapZone === zone && timeSinceLastTap < TAP_DOUBLE_WINDOW;
 
-      const deltaX = pointer.x - this.pointerDownX;
-      const duration = pointer.upTime - pointer.downTime;
+      let punchType: PunchType;
 
-      if (Math.abs(deltaX) > DODGE_MIN_DELTA_X && duration < DODGE_MAX_DURATION_MS) {
-        this.emitDodge(deltaX < 0 ? 'left' : 'right');
-        return;
-      }
-
-      if (duration >= TAP_HOLD_DURATION) {
-        this.emitPunch(PunchType.Special, duration);
-        return;
-      }
-
-      const side: 'left' | 'right' =
-        pointer.x < this.scene.cameras.main.width / 2 ? 'left' : 'right';
-
-      const isDoubleTap =
-        this.lastTapSide === side &&
-        now - this.lastTapTime < TAP_DOUBLE_WINDOW;
-
-      if (isDoubleTap) {
-        const punchType = side === 'left' ? PunchType.Cross : PunchType.Uppercut;
-        this.emitPunch(punchType, duration);
-        this.lastTapSide = null;
+      if (zone === TapZone.Left) {
+        punchType = isDoubleTap ? PunchType.Cross : PunchType.Jab;
       } else {
-        const punchType = side === 'left' ? PunchType.Jab : PunchType.Hook;
-        this.emitPunch(punchType, duration);
-        this.lastTapSide = side;
-        this.lastTapTime = now;
+        punchType = isDoubleTap ? PunchType.Uppercut : PunchType.Hook;
       }
+
+      const power = Math.max(0.3, Math.min(1.0, 1.0 - tapDuration / 400));
+      const direction: 'left' | 'right' = zone === TapZone.Left ? 'left' : 'right';
+
+      const punch: PunchEvent = {
+        type: punchType,
+        power,
+        direction,
+        comboPosition: this.comboPosition,
+      };
+
+      this.scene.events.emit('punch', punch);
+      this.comboPosition++;
+      this.lastTapTime = now;
+      this.lastTapZone = zone;
+      this.startCooldown();
     });
   }
 
-  private emitPunch(type: PunchType, tapDuration: number): void {
-    const power = Math.max(0.3, Math.min(1.0, 1.0 - tapDuration / 400));
-    const side: 'left' | 'right' = type === PunchType.Jab || type === PunchType.Cross ? 'left' : 'right';
-    const punch: PunchEvent = {
-      type,
-      power,
-      direction: side,
-      comboPosition: this.comboPosition,
-    };
-    this.comboPosition++;
-    this.lastPunchTime = Date.now();
-    this.scene.events.emit('punch', punch);
-  }
-
-  private emitDodge(direction: 'left' | 'right'): void {
-    const dodge: DodgeEvent = {
-      direction,
-      timestamp: Date.now(),
-      successful: false,
-    };
-    this.scene.events.emit('dodge', dodge);
+  private startCooldown(): void {
+    this.cooldownActive = true;
+    this.scene.time.delayedCall(TAP_COOLDOWN, () => {
+      this.cooldownActive = false;
+    });
   }
 
   resetCombo(): void {
@@ -100,6 +95,9 @@ export class TapZoneManager {
   }
 
   destroy(): void {
+    if (this.holdTimer) {
+      this.holdTimer.destroy();
+    }
     this.scene.input.removeAllListeners();
   }
 }
