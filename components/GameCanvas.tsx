@@ -1,58 +1,56 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { GAME_WIDTH, GAME_HEIGHT } from '@/game/constants';
+
+const containerStyle: React.CSSProperties = {
+  width: '100%',
+  maxWidth: '390px',
+  height: '100dvh',
+  margin: '0 auto',
+  position: 'relative',
+  overflow: 'hidden',
+  backgroundColor: 'black',
+};
 
 export default function GameCanvas(): React.JSX.Element {
-  const gameContainerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     let game: Phaser.Game | undefined;
 
     const initPhaser = async (): Promise<void> => {
       const Phaser = await import('phaser');
-
-      if (!gameContainerRef.current) return;
+      const { BattleScene } = await import('@/game/scenes/BattleScene');
 
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        parent: gameContainerRef.current,
-        width: 390,
-        height: 844,
-        backgroundColor: '#1a1a2e',
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT,
+        backgroundColor: '#000000',
+        parent: 'phaser-container',
         physics: {
           default: 'matter',
           matter: {
-            gravity: { x: 0, y: 1 },
-            debug: false,
+            gravity: { x: 0, y: 400 },
           },
         },
         scale: {
           mode: Phaser.Scale.FIT,
           autoCenter: Phaser.Scale.CENTER_BOTH,
         },
-        scene: [],
+        scene: [BattleScene],
       };
 
       game = new Phaser.Game(config);
-
-      const canvas = gameContainerRef.current.querySelector('canvas');
-      if (canvas) {
-        canvas.style.touchAction = 'none';
-        canvas.style.userSelect = 'none';
-      }
     };
 
     initPhaser();
 
     return () => {
-      game?.destroy(true);
+      if (game) {
+        game.destroy(true);
+      }
     };
   }, []);
 
-  return (
-    <div
-      ref={gameContainerRef}
-      className="mx-auto h-full w-full max-w-[390px]"
-    />
-  );
+  return <div id="phaser-container" style={containerStyle} />;
 }
