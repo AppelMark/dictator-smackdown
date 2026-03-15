@@ -1,4 +1,4 @@
-import { GAME_WIDTH, TAP_ZONE_SPLIT } from '../constants';
+import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 
 interface HUDData {
   playerHealth: number;
@@ -12,38 +12,31 @@ interface HUDData {
   specialMeter?: number;
 }
 
-const BAR_WIDTH = 150;
+const BAR_WIDTH = 200;
 const BAR_HEIGHT = 16;
-const BAR_Y = 40;
-const PLAYER_BAR_X = 20;
-const AI_BAR_X = GAME_WIDTH / 2 + 20;
 
 function healthColor(ratio: number): number {
   if (ratio > 0.6) {
-    // Green to yellow
     const t = (ratio - 0.6) / 0.4;
     const r = Math.round(255 * (1 - t));
-    const g = 255;
-    return (r << 16) | (g << 8) | 0;
+    return (r << 16) | (255 << 8) | 0;
   }
-  // Yellow to red
   const t = ratio / 0.6;
-  const r = 255;
-  const g = Math.round(255 * t);
-  return (r << 16) | (g << 8) | 0;
+  return (255 << 16) | (Math.round(255 * t) << 8) | 0;
 }
 
 export class HUDScene extends Phaser.Scene {
-  // Health bars
-  private playerBarBg!: Phaser.GameObjects.Rectangle;
-  private playerBarFill!: Phaser.GameObjects.Rectangle;
-  private playerBarFlash!: Phaser.GameObjects.Rectangle;
+  // AI health bar (top center)
   private aiBarBg!: Phaser.GameObjects.Rectangle;
   private aiBarFill!: Phaser.GameObjects.Rectangle;
   private aiBarFlash!: Phaser.GameObjects.Rectangle;
-
-  private playerNameText!: Phaser.GameObjects.Text;
   private aiNameText!: Phaser.GameObjects.Text;
+
+  // Player health bar (bottom center)
+  private playerBarBg!: Phaser.GameObjects.Rectangle;
+  private playerBarFill!: Phaser.GameObjects.Rectangle;
+  private playerBarFlash!: Phaser.GameObjects.Rectangle;
+  private playerNameText!: Phaser.GameObjects.Text;
 
   // Timer
   private timerText!: Phaser.GameObjects.Text;
@@ -66,7 +59,7 @@ export class HUDScene extends Phaser.Scene {
   private controlsOverlay?: Phaser.GameObjects.Container;
   private controlsVisible: boolean = false;
 
-  // Track previous values for tween
+  // Previous values
   private prevPlayerHealth: number = 1;
   private prevAIHealth: number = 1;
 
@@ -75,102 +68,109 @@ export class HUDScene extends Phaser.Scene {
   }
 
   create(): void {
-    // ---- Player health bar (left) ----
-    this.playerNameText = this.add
-      .text(PLAYER_BAR_X, BAR_Y - 14, 'YOU', {
-        fontSize: '10px',
-        color: '#AAAAAA',
-        fontFamily: 'Arial',
-        fontStyle: 'bold',
-      })
-      .setDepth(60);
+    const cx = GAME_WIDTH / 2;
 
-    this.playerBarBg = this.add
-      .rectangle(PLAYER_BAR_X + BAR_WIDTH / 2, BAR_Y, BAR_WIDTH, BAR_HEIGHT, 0x333333)
-      .setDepth(60);
+    // ---- AI health bar (top center) ----
+    const aiBarY = 30;
 
-    this.playerBarFill = this.add
-      .rectangle(PLAYER_BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT, 0x33cc33)
-      .setOrigin(0, 0.5)
-      .setDepth(61);
-
-    this.playerBarFlash = this.add
-      .rectangle(PLAYER_BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT, 0xffffff)
-      .setOrigin(0, 0.5)
-      .setAlpha(0)
-      .setDepth(62);
-
-    // ---- AI health bar (right, mirrored) ----
     this.aiNameText = this.add
-      .text(GAME_WIDTH - 16, BAR_Y - 14, 'ENEMY', {
+      .text(cx, aiBarY - 14, 'ENEMY', {
         fontSize: '10px',
         color: '#AAAAAA',
-        fontFamily: 'Arial',
-        fontStyle: 'bold',
-      })
-      .setOrigin(1, 0)
-      .setDepth(60);
-
-    this.aiBarBg = this.add
-      .rectangle(AI_BAR_X + BAR_WIDTH / 2, BAR_Y, BAR_WIDTH, BAR_HEIGHT, 0x333333)
-      .setDepth(60);
-
-    this.aiBarFill = this.add
-      .rectangle(AI_BAR_X + BAR_WIDTH, BAR_Y, BAR_WIDTH, BAR_HEIGHT, 0xcc3333)
-      .setOrigin(1, 0.5)
-      .setDepth(61);
-
-    this.aiBarFlash = this.add
-      .rectangle(AI_BAR_X + BAR_WIDTH, BAR_Y, BAR_WIDTH, BAR_HEIGHT, 0xffffff)
-      .setOrigin(1, 0.5)
-      .setAlpha(0)
-      .setDepth(62);
-
-    // ---- Timer (center top) ----
-    this.timerText = this.add
-      .text(GAME_WIDTH / 2, 16, '0:00', {
-        fontSize: '20px',
-        color: '#FFFFFF',
         fontFamily: 'Arial',
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0)
       .setDepth(60);
 
-    // ---- Combo text (right center) ----
+    this.aiBarBg = this.add
+      .rectangle(cx, aiBarY, BAR_WIDTH, BAR_HEIGHT, 0x333333)
+      .setDepth(60);
+
+    this.aiBarFill = this.add
+      .rectangle(cx - BAR_WIDTH / 2, aiBarY, BAR_WIDTH, BAR_HEIGHT, 0xcc3333)
+      .setOrigin(0, 0.5)
+      .setDepth(61);
+
+    this.aiBarFlash = this.add
+      .rectangle(cx - BAR_WIDTH / 2, aiBarY, BAR_WIDTH, BAR_HEIGHT, 0xffffff)
+      .setOrigin(0, 0.5)
+      .setAlpha(0)
+      .setDepth(62);
+
+    // ---- Player health bar (bottom center) ----
+    const playerBarY = GAME_HEIGHT - 50;
+
+    this.playerNameText = this.add
+      .text(cx, playerBarY - 14, 'YOU', {
+        fontSize: '10px',
+        color: '#AAAAAA',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(60);
+
+    this.playerBarBg = this.add
+      .rectangle(cx, playerBarY, BAR_WIDTH, BAR_HEIGHT, 0x333333)
+      .setDepth(60);
+
+    this.playerBarFill = this.add
+      .rectangle(cx - BAR_WIDTH / 2, playerBarY, BAR_WIDTH, BAR_HEIGHT, 0x33cc33)
+      .setOrigin(0, 0.5)
+      .setDepth(61);
+
+    this.playerBarFlash = this.add
+      .rectangle(cx - BAR_WIDTH / 2, playerBarY, BAR_WIDTH, BAR_HEIGHT, 0xffffff)
+      .setOrigin(0, 0.5)
+      .setAlpha(0)
+      .setDepth(62);
+
+    // ---- Timer (top right) ----
+    this.timerText = this.add
+      .text(GAME_WIDTH - 16, 10, '0:00', {
+        fontSize: '18px',
+        color: '#FFFFFF',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+      })
+      .setOrigin(1, 0)
+      .setDepth(60);
+
+    // ---- Combo text (center) ----
     this.comboText = this.add
-      .text(GAME_WIDTH - 20, 200, '', {
-        fontSize: '24px',
+      .text(cx, GAME_HEIGHT * 0.55, '', {
+        fontSize: '28px',
         color: '#FFD700',
         fontFamily: 'Arial',
         fontStyle: 'bold',
         stroke: '#000000',
         strokeThickness: 3,
       })
-      .setOrigin(1, 0.5)
+      .setOrigin(0.5)
       .setAlpha(0)
       .setDepth(60);
 
-    // ---- Momentum indicator (half-circle under player bar) ----
+    // ---- Momentum indicator (under AI health bar) ----
     this.momentumGfx = this.add.graphics().setDepth(60);
     this.drawMomentum(50);
 
-    // ---- Special meter (bottom center) ----
-    const specialY = 800;
-    const specialWidth = 160;
+    // ---- Special meter (above player health bar) ----
+    const specialY = playerBarY - 30;
+    const specialWidth = 120;
 
     this.specialBarBg = this.add
-      .rectangle(GAME_WIDTH / 2, specialY, specialWidth, 10, 0x333333)
+      .rectangle(cx, specialY, specialWidth, 8, 0x333333)
       .setDepth(60);
 
     this.specialBarFill = this.add
-      .rectangle(GAME_WIDTH / 2 - specialWidth / 2, specialY, 0, 10, 0xFFD700)
+      .rectangle(cx - specialWidth / 2, specialY, 0, 8, 0xFFD700)
       .setOrigin(0, 0.5)
       .setDepth(61);
 
     this.specialLabel = this.add
-      .text(GAME_WIDTH / 2, specialY - 14, 'SPECIAL', {
-        fontSize: '11px',
+      .text(cx, specialY - 12, 'SPECIAL', {
+        fontSize: '9px',
         color: '#666666',
         fontFamily: 'Arial',
         fontStyle: 'bold',
@@ -178,28 +178,16 @@ export class HUDScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(60);
 
-    // ---- Tap zone indicators (subtle) ----
-    this.add
-      .rectangle(TAP_ZONE_SPLIT / 2, 750, TAP_ZONE_SPLIT - 20, 60, 0x3366ff)
-      .setAlpha(0.06)
-      .setDepth(55);
-
-    this.add
-      .rectangle(TAP_ZONE_SPLIT + (GAME_WIDTH - TAP_ZONE_SPLIT) / 2, 750, GAME_WIDTH - TAP_ZONE_SPLIT - 20, 60, 0xff4444)
-      .setAlpha(0.06)
-      .setDepth(55);
-
     // ---- Help button ----
     const helpText = this.add
-      .text(GAME_WIDTH - 16, 50, '?', {
-        fontSize: '20px',
+      .text(16, 10, '?', {
+        fontSize: '18px',
         color: '#555555',
         fontFamily: 'Arial',
         fontStyle: 'bold',
         backgroundColor: '#222222',
-        padding: { x: 8, y: 4 },
+        padding: { x: 6, y: 3 },
       })
-      .setOrigin(1, 0)
       .setDepth(70)
       .setInteractive({ useHandCursor: true });
 
@@ -214,32 +202,31 @@ export class HUDScene extends Phaser.Scene {
   // ============================================================
 
   private onHUDUpdate(data: HUDData): void {
-    // --- Health bars with tween ---
     const playerRatio = data.playerHealth / data.playerMaxHealth;
     const aiRatio = data.opponentHealth / data.opponentMaxHealth;
 
     if (playerRatio !== this.prevPlayerHealth) {
-      this.tweenHealthBar(this.playerBarFill, playerRatio, BAR_WIDTH, false);
+      this.tweenHealthBar(this.playerBarFill, playerRatio);
       this.playerBarFill.setFillStyle(healthColor(playerRatio));
       if (playerRatio < this.prevPlayerHealth) this.flashBar(this.playerBarFlash);
       this.prevPlayerHealth = playerRatio;
     }
 
     if (aiRatio !== this.prevAIHealth) {
-      this.tweenHealthBar(this.aiBarFill, aiRatio, BAR_WIDTH, true);
+      this.tweenHealthBar(this.aiBarFill, aiRatio);
       this.aiBarFill.setFillStyle(healthColor(aiRatio));
       if (aiRatio < this.prevAIHealth) this.flashBar(this.aiBarFlash);
       this.prevAIHealth = aiRatio;
     }
 
-    // --- Timer ---
+    // Timer
     const minutes = Math.floor(data.timeElapsed / 60);
     const seconds = Math.floor(data.timeElapsed % 60);
     this.timerText.setText(`${minutes}:${seconds.toString().padStart(2, '0')}`);
 
-    // --- Combo ---
+    // Combo
     if (data.comboCount > 1) {
-      this.comboText.setText(`${data.comboCount}x`);
+      this.comboText.setText(`${data.comboCount}x COMBO`);
       this.comboText.setAlpha(1);
 
       this.comboHideTimer?.destroy();
@@ -254,12 +241,12 @@ export class HUDScene extends Phaser.Scene {
       this.comboText.setAlpha(0);
     }
 
-    // --- Momentum ---
+    // Momentum
     this.drawMomentum(data.momentum);
 
-    // --- Special meter ---
+    // Special meter
     const meter = data.specialMeter ?? 0;
-    const specialWidth = 160;
+    const specialWidth = 120;
     const fillWidth = (meter / 100) * specialWidth;
 
     this.tweens.killTweensOf(this.specialBarFill);
@@ -306,14 +293,12 @@ export class HUDScene extends Phaser.Scene {
 
   private tweenHealthBar(
     bar: Phaser.GameObjects.Rectangle,
-    ratio: number,
-    maxWidth: number,
-    _mirrored: boolean
+    ratio: number
   ): void {
     this.tweens.killTweensOf(bar);
     this.tweens.add({
       targets: bar,
-      width: maxWidth * Math.max(0, ratio),
+      width: BAR_WIDTH * Math.max(0, ratio),
       duration: 200,
       ease: 'Power2',
     });
@@ -329,24 +314,22 @@ export class HUDScene extends Phaser.Scene {
   }
 
   // ============================================================
-  // Momentum
+  // Momentum (small arc under AI bar)
   // ============================================================
 
   private drawMomentum(momentum: number): void {
     this.momentumGfx.clear();
 
-    const cx = PLAYER_BAR_X + BAR_WIDTH / 2;
-    const cy = BAR_Y + BAR_HEIGHT / 2 + 10;
-    const radius = 18;
+    const cx = GAME_WIDTH / 2;
+    const cy = 52;
+    const radius = 14;
     const ratio = momentum / 100;
 
-    // Background arc
     this.momentumGfx.lineStyle(3, 0x333333, 1);
     this.momentumGfx.beginPath();
     this.momentumGfx.arc(cx, cy, radius, Math.PI, 0, false);
     this.momentumGfx.strokePath();
 
-    // Fill arc
     const fillAngle = Math.PI + ratio * Math.PI;
     const color = momentum > 70 ? 0xFFD700 : momentum < 30 ? 0xFF4444 : 0x888888;
     this.momentumGfx.lineStyle(3, color, 1);
@@ -370,14 +353,13 @@ export class HUDScene extends Phaser.Scene {
     this.controlsVisible = true;
     this.controlsOverlay = this.add.container(0, 0).setDepth(90);
 
-    // Backdrop
     const bg = this.add
-      .rectangle(GAME_WIDTH / 2, 422, GAME_WIDTH, 844, 0x000000)
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000)
       .setAlpha(0.85);
     this.controlsOverlay.add(bg);
 
     const title = this.add
-      .text(GAME_WIDTH / 2, 200, 'CONTROLS', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.2, 'CONTROLS', {
         fontSize: '28px',
         color: '#FFD700',
         fontFamily: 'Arial',
@@ -387,8 +369,8 @@ export class HUDScene extends Phaser.Scene {
     this.controlsOverlay.add(title);
 
     const lines = [
-      'Tap LEFT = Jab',
-      'Tap RIGHT = Hook',
+      'Tap LEFT side = Jab',
+      'Tap RIGHT side = Hook',
       'Double tap LEFT = Cross',
       'Double tap RIGHT = Uppercut',
       'Swipe LEFT/RIGHT = Dodge',
@@ -400,7 +382,7 @@ export class HUDScene extends Phaser.Scene {
 
     lines.forEach((line, i) => {
       const text = this.add
-        .text(GAME_WIDTH / 2, 260 + i * 32, line, {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.3 + i * 32, line, {
           fontSize: '15px',
           color: line === '' ? '#000' : '#CCCCCC',
           fontFamily: 'Arial',
@@ -410,7 +392,7 @@ export class HUDScene extends Phaser.Scene {
     });
 
     const closeText = this.add
-      .text(GAME_WIDTH / 2, 580, 'Tap anywhere to close', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.7, 'Tap anywhere to close', {
         fontSize: '13px',
         color: '#666666',
         fontFamily: 'Arial',
@@ -418,7 +400,6 @@ export class HUDScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.controlsOverlay.add(closeText);
 
-    // Close on tap anywhere
     bg.setInteractive();
     bg.once('pointerdown', () => this.toggleControls());
   }

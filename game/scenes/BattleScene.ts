@@ -5,10 +5,8 @@ import { ARCHETYPE_STATS } from '../constants';
 import type { ArchetypeConfig } from '../constants';
 import {
   COUNTER_WINDOW,
-  TELEGRAPH_DURATION,
   MOMENTUM_HIT_GAIN,
   MOMENTUM_DAMAGE_LOSS,
-  MOMENTUM_MISS_LOSS,
   GAME_WIDTH,
   GAME_HEIGHT,
   STAR_TWO_TIME_LIMIT,
@@ -22,6 +20,22 @@ import { DamageCalculator } from '../DamageCalculator';
 import { AdaptiveDifficulty } from '../AdaptiveDifficulty';
 import { updateAfterFight } from '../../lib/playerProfile';
 
+// --- First-person positions ---
+const AI_X = GAME_WIDTH / 2;
+const AI_Y = GAME_HEIGHT * 0.4;
+const AI_W = 200;
+const AI_H = 240;
+
+const FIST_Y = GAME_HEIGHT * 0.75;
+const LEFT_FIST_X = GAME_WIDTH * 0.15;
+const RIGHT_FIST_X = GAME_WIDTH * 0.85;
+const FIST_SIZE = 50;
+
+// --- Punch target positions ---
+const TARGET_LEFT_X = GAME_WIDTH * 0.45;
+const TARGET_RIGHT_X = GAME_WIDTH * 0.55;
+const TARGET_Y = GAME_HEIGHT * 0.35;
+
 export class BattleScene extends Phaser.Scene {
   // --- Managers ---
   private tapZoneManager!: TapZoneManager;
@@ -30,9 +44,10 @@ export class BattleScene extends Phaser.Scene {
   private comboManager!: ComboManager;
   private aiOpponent!: AIOpponent;
 
-  // --- Game objects ---
-  private player!: Phaser.GameObjects.Rectangle;
+  // --- Game objects (first-person) ---
   private ai!: Phaser.GameObjects.Rectangle;
+  private leftFist!: Phaser.GameObjects.Rectangle;
+  private rightFist!: Phaser.GameObjects.Rectangle;
 
   // --- State ---
   private playerHealth: number = 100;
@@ -112,17 +127,20 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#000000');
     this.fightStartTime = Date.now();
 
-    // --- Fighter placeholders ---
-    const playerX = GAME_WIDTH * 0.25;
-    const playerY = GAME_HEIGHT * 0.6;
-    const aiX = GAME_WIDTH * 0.75;
-    const aiY = GAME_HEIGHT * 0.6;
-    this.player = this.add.rectangle(playerX, playerY, 80, 160, 0x3366ff).setDepth(10);
-    this.ai = this.add.rectangle(aiX, aiY, 80, 160, 0xcc3333).setDepth(10);
+    // --- AI opponent (large, centered, first-person view) ---
+    this.ai = this.add.rectangle(AI_X, AI_Y, AI_W, AI_H, 0xcc3333).setDepth(5);
+
+    // --- Player fists (bottom of screen) ---
+    this.leftFist = this.add
+      .rectangle(LEFT_FIST_X, FIST_Y, FIST_SIZE, FIST_SIZE, 0x3366ff)
+      .setDepth(20);
+    this.rightFist = this.add
+      .rectangle(RIGHT_FIST_X, FIST_Y, FIST_SIZE, FIST_SIZE, 0x3366ff)
+      .setDepth(20);
 
     // --- Managers ---
     this.tapZoneManager = new TapZoneManager(this);
-    this.facePartManager = new FacePartManager(this, aiX, aiY - 40);
+    this.facePartManager = new FacePartManager(this, AI_X, AI_Y);
     this.juiceManager = new JuiceManager(this);
     this.comboManager = new ComboManager(this);
     this.aiOpponent = new AIOpponent(
@@ -157,7 +175,6 @@ export class BattleScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.currentState === BattleState.KO || this.currentState === BattleState.Defeat) return;
 
-    // AI update
     this.aiOpponent.update(delta, this.aiHealth, this.playerHealth, this.playerMomentum);
 
     // Stamina regen (15/s when not recently attacking)
@@ -173,10 +190,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // Arena degradation
-    const aiHealthPercent = this.aiHealth / this.aiMaxHealth;
-    this.juiceManager.onArenaDegrade(aiHealthPercent);
+    this.juiceManager.onArenaDegrade(this.aiHealth / this.aiMaxHealth);
 
-    // Periodic HUD update (every 200ms)
+    // Periodic HUD update
     this.hudUpdateTimer += delta;
     if (this.hudUpdateTimer > 200) {
       this.hudUpdateTimer = 0;
@@ -185,7 +201,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // ============================================================
-  // Player punch
+  // Player punch — first-person fist animations
   // ============================================================
 
   private onPlayerPunch(event: PunchEvent): void {
@@ -194,6 +210,9 @@ export class BattleScene extends Phaser.Scene {
     this.currentState = BattleState.Animating;
     this.lastPunch = event;
     this.lastPunchTime = Date.now();
+
+    // Animate the correct fist
+    this.animateFistPunch(event.type);
 
     // Register with AI and combo
     this.aiOpponent.registerPlayerMove(event.type);
@@ -207,7 +226,7 @@ export class BattleScene extends Phaser.Scene {
       this.totalCounterHits++;
     }
 
-    // Build stats for damage calc
+    // Damage calculation
     const attackerStats = {
       health: this.playerHealth,
       maxHealth: this.playerMaxHealth,
@@ -230,7 +249,6 @@ export class BattleScene extends Phaser.Scene {
       momentum: 50,
     };
 
-    // Override combo position
     const punchWithCombo: PunchEvent = { ...event, comboPosition: comboCount - 1 };
 
     const result = DamageCalculator.calculate(
@@ -244,15 +262,11 @@ export class BattleScene extends Phaser.Scene {
 
     // Apply damage
     this.aiHealth = Math.max(0, this.aiHealth - result.damage);
-
-    // Momentum gain
     this.playerMomentum = Math.min(100, this.playerMomentum + MOMENTUM_HIT_GAIN);
-
-    // Special meter charge
     this.specialMeter = Math.min(100, this.specialMeter + 5 + (isCounter ? 10 : 0));
 
-    // Juice
-    this.juiceManager.onPunchHit(this.ai.x, this.ai.y - 40, result, event.type);
+    // Juice feedback on AI position
+    this.juiceManager.onPunchHit(AI_X, AI_Y - 20, result, event.type);
 
     // Face part detach
     if (result.triggerDetach && result.partName) {
@@ -262,7 +276,7 @@ export class BattleScene extends Phaser.Scene {
     // Counter feedback
     if (isCounter) {
       const counterText = this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'COUNTER!', {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 'COUNTER!', {
           fontSize: '36px',
           color: '#FFD700',
           fontFamily: 'Arial',
@@ -288,21 +302,18 @@ export class BattleScene extends Phaser.Scene {
       this.juiceManager.onComboHit(comboCount);
     }
 
-    // Animate AI hit
-    const dir = event.direction === 'left' ? -25 : 25;
+    // AI recoil
     this.tweens.add({
       targets: this.ai,
-      x: this.ai.x + dir,
+      y: this.ai.y - 10,
+      scaleX: 0.95,
       duration: 75,
       yoyo: true,
     });
 
-    // Update face part container position
-    this.facePartManager.updateContainerPosition(this.ai.x, this.ai.y - 40);
-
+    this.facePartManager.updateContainerPosition(this.ai.x, this.ai.y);
     this.emitHUDUpdate();
 
-    // Check KO
     if (this.aiHealth <= 0) {
       this.checkAIKO();
     } else {
@@ -315,39 +326,139 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // ============================================================
-  // Dodge
+  // Fist punch animations
+  // ============================================================
+
+  private animateFistPunch(type: PunchType): void {
+    switch (type) {
+      case PunchType.Jab:
+        // Left fist straight to AI center
+        this.tweens.add({
+          targets: this.leftFist,
+          x: TARGET_LEFT_X,
+          y: TARGET_Y,
+          duration: 100,
+          yoyo: true,
+          hold: 30,
+          ease: 'Power2',
+        });
+        break;
+
+      case PunchType.Cross:
+        // Right fist straight to AI center
+        this.tweens.add({
+          targets: this.rightFist,
+          x: TARGET_RIGHT_X,
+          y: TARGET_Y,
+          duration: 100,
+          yoyo: true,
+          hold: 30,
+          ease: 'Power2',
+        });
+        break;
+
+      case PunchType.Hook: {
+        // Left fist arcs from left side to center
+        const hookPath = new Phaser.Curves.Path(this.leftFist.x, this.leftFist.y);
+        hookPath.cubicBezierTo(
+          GAME_WIDTH * 0.05, GAME_HEIGHT * 0.5,
+          GAME_WIDTH * 0.2, TARGET_Y,
+          TARGET_LEFT_X, TARGET_Y
+        );
+
+        const hookFollower = { t: 0 };
+        this.tweens.add({
+          targets: hookFollower,
+          t: 1,
+          duration: 120,
+          ease: 'Power2',
+          onUpdate: () => {
+            const point = hookPath.getPoint(hookFollower.t);
+            this.leftFist.setPosition(point.x, point.y);
+          },
+          onComplete: () => {
+            this.tweens.add({
+              targets: this.leftFist,
+              x: LEFT_FIST_X,
+              y: FIST_Y,
+              duration: 150,
+              ease: 'Power1',
+            });
+          },
+        });
+        break;
+      }
+
+      case PunchType.Uppercut: {
+        // Right fist from below upward into face
+        this.tweens.add({
+          targets: this.rightFist,
+          x: GAME_WIDTH / 2,
+          y: TARGET_Y - 30,
+          duration: 130,
+          ease: 'Power3',
+          onComplete: () => {
+            this.tweens.add({
+              targets: this.rightFist,
+              x: RIGHT_FIST_X,
+              y: FIST_Y,
+              duration: 180,
+              ease: 'Power1',
+            });
+          },
+        });
+        break;
+      }
+
+      case PunchType.Special:
+        // Both fists converge on AI
+        this.tweens.add({
+          targets: this.leftFist,
+          x: GAME_WIDTH * 0.4,
+          y: TARGET_Y,
+          duration: 150,
+          yoyo: true,
+          hold: 50,
+        });
+        this.tweens.add({
+          targets: this.rightFist,
+          x: GAME_WIDTH * 0.6,
+          y: TARGET_Y,
+          duration: 150,
+          yoyo: true,
+          hold: 50,
+        });
+        break;
+    }
+  }
+
+  // ============================================================
+  // Dodge — camera sway (no player sprite to move)
   // ============================================================
 
   private onDodge(event: { direction: 'left' | 'right' }): void {
     if (this.currentState === BattleState.KO || this.currentState === BattleState.Defeat) return;
 
-    const dir = event.direction === 'left' ? -30 : 30;
+    // First-person dodge: sway fists and shift camera
+    const dir = event.direction === 'left' ? -1 : 1;
     this.tweens.add({
-      targets: this.player,
-      x: this.player.x + dir,
+      targets: [this.leftFist, this.rightFist],
+      x: `+=${dir * 40}`,
       duration: 100,
       yoyo: true,
     });
+    this.cameras.main.shake(80, 0.003);
 
     if (this.telegraphActive) {
-      // Successful dodge
       this.telegraphActive = false;
       this.clearTelegraph();
       this.aiOpponent.stop();
 
       this.juiceManager.onDodgeSuccess();
 
-      // Counter window
       this.counterWindowActive = true;
       this.counterWindowTimer = this.time.delayedCall(COUNTER_WINDOW, () => {
         this.counterWindowActive = false;
-      });
-
-      // Re-enable AI after counter window
-      this.time.delayedCall(COUNTER_WINDOW + 200, () => {
-        if (this.currentState !== BattleState.KO && this.currentState !== BattleState.Defeat) {
-          // AI will resume via its own update loop
-        }
       });
     }
   }
@@ -361,26 +472,28 @@ export class BattleScene extends Phaser.Scene {
 
     this.telegraphActive = true;
 
-    // Red glow on AI
+    // Red glow around AI
     this.telegraphGfx = this.add.graphics().setDepth(8);
-    this.telegraphGfx.fillStyle(0xff0000, 0.25);
-    this.telegraphGfx.fillRect(this.ai.x - 50, this.ai.y - 90, 100, 180);
+    this.telegraphGfx.fillStyle(0xff0000, 0.2);
+    this.telegraphGfx.fillRect(AI_X - AI_W / 2 - 10, AI_Y - AI_H / 2 - 10, AI_W + 20, AI_H + 20);
 
     this.telegraphTween = this.tweens.add({
       targets: this.telegraphGfx,
       alpha: 0.05,
-      duration: 300,
+      duration: 250,
       yoyo: true,
       repeat: -1,
     });
 
     // DODGE hint
     this.dodgeHintText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 80, 'DODGE!', {
-        fontSize: '18px',
+      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.65, 'SWIPE TO DODGE!', {
+        fontSize: '20px',
         color: '#FF6666',
         fontFamily: 'Arial',
         fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 3,
       })
       .setOrigin(0.5)
       .setDepth(40);
@@ -389,7 +502,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // ============================================================
-  // Enemy attack (after telegraph completes)
+  // Enemy attack — camera shake (first-person hit)
   // ============================================================
 
   private onEnemyAttack(data: {
@@ -402,7 +515,6 @@ export class BattleScene extends Phaser.Scene {
     this.telegraphActive = false;
     this.clearTelegraph();
 
-    // Calculate AI damage to player
     const aiStats = {
       health: this.aiHealth,
       maxHealth: this.aiMaxHealth,
@@ -437,25 +549,18 @@ export class BattleScene extends Phaser.Scene {
 
     this.playerHealth = Math.max(0, this.playerHealth - finalDamage);
     this.tookNoDamage = false;
-
-    // Momentum loss
     this.playerMomentum = Math.max(0, this.playerMomentum - MOMENTUM_DAMAGE_LOSS);
 
-    // Break combo
     this.comboManager.registerTakeDamage();
     this.juiceManager.hideComboText();
 
-    // Animate player hit
-    this.tweens.add({
-      targets: this.player,
-      x: this.player.x - 20,
-      duration: 75,
-      yoyo: true,
-    });
+    // First-person hit: camera shake + red flash (you're getting hit)
+    const shakeIntensity = data.type === PunchType.Uppercut ? 0.025 : 0.015;
+    this.cameras.main.shake(200, shakeIntensity);
+    this.cameras.main.flash(100, 255, 50, 50, false, undefined);
 
     this.emitHUDUpdate();
 
-    // Check player KO
     if (this.playerHealth <= 0) {
       this.checkPlayerKO();
     }
@@ -469,7 +574,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.currentState === BattleState.KO || this.currentState === BattleState.Defeat) return;
 
     const stareText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'BEAR STARE!', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.3, 'BEAR STARE!', {
         fontSize: '32px',
         color: '#FF4444',
         fontFamily: 'Arial',
@@ -497,8 +602,17 @@ export class BattleScene extends Phaser.Scene {
     const prevState = this.currentState;
     this.currentState = BattleState.Animating;
 
+    // AI looms closer
+    this.tweens.add({
+      targets: this.ai,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 500,
+      yoyo: true,
+    });
+
     const intimidText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'INTIMIDATION!', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.3, 'INTIMIDATION!', {
         fontSize: '28px',
         color: '#9933FF',
         fontFamily: 'Arial',
@@ -535,12 +649,14 @@ export class BattleScene extends Phaser.Scene {
     this.specialUsed = true;
     this.currentState = BattleState.SpecialExecuting;
 
-    // Dramatic slow-mo
     this.time.timeScale = 0.3;
     this.cameras.main.shake(600, 0.02);
 
+    // Both fists animate
+    this.animateFistPunch(PunchType.Special);
+
     const specialText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, 'SPECIAL MOVE!', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 'SPECIAL MOVE!', {
         fontSize: '40px',
         color: '#FFD700',
         fontFamily: 'Arial',
@@ -559,11 +675,9 @@ export class BattleScene extends Phaser.Scene {
       ease: 'Back.easeOut',
     });
 
-    // Big damage
     const specialDamage = 40;
     this.aiHealth = Math.max(0, this.aiHealth - specialDamage);
 
-    // Screen flash
     const flash = this.add
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xFFD700)
       .setAlpha(0.5)
@@ -576,15 +690,15 @@ export class BattleScene extends Phaser.Scene {
       onComplete: () => flash.destroy(),
     });
 
-    // AI knockback
     this.tweens.add({
       targets: this.ai,
-      x: this.ai.x + 40,
+      scaleX: 0.85,
+      scaleY: 0.85,
+      y: this.ai.y + 20,
       duration: 200,
       yoyo: true,
     });
 
-    // Face part check
     const specialPunch: PunchEvent = {
       type: PunchType.Special,
       power: 1.0,
@@ -613,7 +727,6 @@ export class BattleScene extends Phaser.Scene {
   private checkAIKO(): void {
     this.currentState = BattleState.KO;
 
-    // Detach all parts
     const koPunch: PunchEvent = {
       type: PunchType.Uppercut,
       power: 1.0,
@@ -625,14 +738,21 @@ export class BattleScene extends Phaser.Scene {
     this.juiceManager.onKO();
     this.aiOpponent.stop();
 
+    // AI falls backward
+    this.tweens.add({
+      targets: this.ai,
+      y: this.ai.y + 100,
+      scaleY: 0.5,
+      alpha: 0.5,
+      duration: 600,
+      ease: 'Power2',
+    });
+
     this.time.delayedCall(800, () => {
       const timeSeconds = (Date.now() - this.fightStartTime) / 1000;
       const result = this.buildBattleResult('player', timeSeconds);
 
-      // Save async — don't block scene transition
-      updateAfterFight(result, this.archetype, this.difficulty).catch(() => {
-        // Supabase may not be configured — continue anyway
-      });
+      updateAfterFight(result, this.archetype, this.difficulty).catch(() => {});
 
       this.scene.stop('HUDScene');
       this.scene.start('KOScene', { result });
@@ -643,7 +763,16 @@ export class BattleScene extends Phaser.Scene {
     this.currentState = BattleState.Defeat;
     this.aiOpponent.stop();
 
-    this.cameras.main.shake(400, 0.015);
+    // First-person: heavy shake and fade to black
+    this.cameras.main.shake(600, 0.03);
+
+    // Fists drop
+    this.tweens.add({
+      targets: [this.leftFist, this.rightFist],
+      y: GAME_HEIGHT + 50,
+      alpha: 0,
+      duration: 500,
+    });
 
     this.time.delayedCall(600, () => {
       const timeSeconds = (Date.now() - this.fightStartTime) / 1000;
@@ -710,6 +839,7 @@ export class BattleScene extends Phaser.Scene {
       momentum: this.playerMomentum,
       timeElapsed,
       score: 0,
+      specialMeter: this.specialMeter,
     });
   }
 
