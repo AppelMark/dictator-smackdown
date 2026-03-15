@@ -1,4 +1,14 @@
-import type { HUDData } from '../../types/battle';
+/** Locally defined since HUDData was removed from the types. */
+interface HUDData {
+  playerHealth: number;
+  playerMaxHealth: number;
+  opponentHealth: number;
+  opponentMaxHealth: number;
+  comboCount: number;
+  momentum: number;
+  timeElapsed: number;
+  score: number;
+}
 
 export class HUDScene extends Phaser.Scene {
   private playerHealthText?: Phaser.GameObjects.Text;

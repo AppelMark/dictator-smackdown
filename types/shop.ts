@@ -1,39 +1,29 @@
-export type ProductType = 'dlc' | 'season_pass' | 'cosmetic' | 'bundle';
-
-export type PaymentPlatform = 'ios' | 'android' | 'web';
+export enum ProductType {
+  DLCArchetype = 'DLCArchetype',
+  SeasonPass = 'SeasonPass',
+  CosmeticSkin = 'CosmeticSkin',
+  CommentaryPack = 'CommentaryPack',
+  FounderBundle = 'FounderBundle',
+}
 
 export interface ShopItem {
   id: string;
+  productType: ProductType;
   name: string;
   description: string;
-  type: ProductType;
-  priceEurCents: number;
-  revenueCatId: string;
+  price: number;
+  revenueCatProductId: string;
   stripeProductId: string;
-  available: boolean;
-  imageUrl: string;
-  limitedTimeDays?: number;
+  imageKey: string;
+  isAvailable: boolean;
+  isFeatured: boolean;
 }
 
 export interface Purchase {
   id: string;
   playerId: string;
   productId: string;
-  platform: PaymentPlatform;
+  purchasedAt: Date;
+  platform: 'ios' | 'android' | 'web';
   amountCents: number;
-  currency: string;
-  purchasedAt: string;
-  receiptId?: string;
-}
-
-export interface CheckoutSession {
-  sessionId: string;
-  url: string;
-}
-
-export interface PurchaseVerification {
-  valid: boolean;
-  productId: string;
-  platform: PaymentPlatform;
-  expiresAt?: string;
 }

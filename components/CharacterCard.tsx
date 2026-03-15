@@ -26,8 +26,8 @@ export default function CharacterCard({
       <h3 className="font-[family-name:var(--font-bebas-neue)] text-xl">
         {character.name}
       </h3>
-      <p className="text-sm text-gray-400">{character.title}</p>
-      <p className="mt-1 text-xs">Difficulty: {character.difficulty}/6</p>
+      <p className="text-sm text-gray-400">{character.nickname}</p>
+      <p className="mt-1 text-xs">Difficulty: {character.difficultyRating}/6</p>
     </button>
   );
 }

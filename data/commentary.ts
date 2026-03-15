@@ -1,4 +1,5 @@
-import { CharacterArchetype, PunchType } from '../types/character';
+import { CharacterArchetype } from '../types/character';
+import { PunchType } from '../types/battle';
 
 export const HIT_COMMENTARY: Record<PunchType, string[]> = {
   [PunchType.Jab]: ['Nice jab!', 'Quick hands!', 'Snap!'],
@@ -21,8 +22,6 @@ export const DEFEAT_TAUNT: Record<CharacterArchetype, string[]> = {
   [CharacterArchetype.TheChairman]: ['Impenetrable!', 'Your punches are nothing!'],
   [CharacterArchetype.TheAyatollah]: ['So predictable!', 'Learn to vary your attacks!'],
   [CharacterArchetype.TheGeneralissimo]: ['I am invincible!', 'Kneel before me!'],
-  [CharacterArchetype.TheOligarch]: ['Money talks!', 'You can\'t afford to beat me!'],
-  [CharacterArchetype.TheTechMessiah]: ['I computed your defeat!', 'Algorithm wins!'],
 };
 
 export const ARCHETYPE_CATCHPHRASES: Record<CharacterArchetype, string[]> = {
@@ -32,6 +31,4 @@ export const ARCHETYPE_CATCHPHRASES: Record<CharacterArchetype, string[]> = {
   [CharacterArchetype.TheChairman]: ['Try again!', 'Your efforts are futile!'],
   [CharacterArchetype.TheAyatollah]: ['Predictable!', 'I see your pattern!'],
   [CharacterArchetype.TheGeneralissimo]: ['BOW DOWN!', 'I am the supreme leader!'],
-  [CharacterArchetype.TheOligarch]: ['Everything has a price!', 'I always win!'],
-  [CharacterArchetype.TheTechMessiah]: ['Disrupted!', 'Innovation beats tradition!'],
 };

@@ -1,62 +1,48 @@
 export enum CharacterArchetype {
   DerGroszer = 'DerGroszer',
   TheDon = 'TheDon',
-  TheNationalist = 'TheNationalist',
   TheChairman = 'TheChairman',
+  TheNationalist = 'TheNationalist',
   TheAyatollah = 'TheAyatollah',
   TheGeneralissimo = 'TheGeneralissimo',
-  TheOligarch = 'TheOligarch',
-  TheTechMessiah = 'TheTechMessiah',
-}
-
-export enum PunchType {
-  Jab = 'Jab',
-  Cross = 'Cross',
-  Hook = 'Hook',
-  Uppercut = 'Uppercut',
-  Special = 'Special',
-}
-
-export type AIStyle =
-  | 'berserker'
-  | 'chaotic'
-  | 'speedster'
-  | 'defensive'
-  | 'counter'
-  | 'boss';
-
-export interface Move {
-  type: PunchType;
-  damage: number;
-  speed: number;
-  telegraphDuration: number;
 }
 
 export interface CharacterStats {
   health: number;
+  maxHealth: number;
+  stamina: number;
+  maxStamina: number;
   strength: number;
-  defense: number;
   speed: number;
-  specialDamage: number;
+  defense: number;
+  momentum: number;
+}
+
+export interface Move {
+  name: string;
+  animationKey: string;
+  damage: number;
+  staminaCost: number;
+  duration: number;
+  ragdollForce: { x: number; y: number };
+  comboMultiplier: number;
 }
 
 export interface Character {
+  id: string;
   archetype: CharacterArchetype;
   name: string;
-  title: string;
+  nickname: string;
   description: string;
-  aiStyle: AIStyle;
+  unlocked: boolean;
+  isPaidDLC: boolean;
+  dlcProductId?: string;
   stats: CharacterStats;
-  arena: string;
-  difficulty: number;
-  unlockCondition: string;
-  isDLC: boolean;
-  productId?: string;
-}
-
-export interface FacePart {
-  id: string;
-  name: string;
-  healthThreshold: number;
-  sprite: string;
+  moves: Move[];
+  signatureMove: Move;
+  catchphrases: string[];
+  spriteKey: string;
+  arenaKey: string;
+  aiStyle: string;
+  difficultyRating: 1 | 2 | 3 | 4 | 5 | 6;
 }

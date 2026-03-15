@@ -1,4 +1,4 @@
-import { PunchType, type AIStyle } from '../../types/character';
+import { PunchType } from '../../types/battle';
 import type { PunchEvent } from '../../types/battle';
 import { TELEGRAPH_DURATION_MS } from '../constants';
 
@@ -9,11 +9,11 @@ interface AIAction {
 
 export class AIOpponent {
   private scene: Phaser.Scene;
-  private style: AIStyle;
+  private style: string;
   private lastPlayerMoves: PunchType[] = [];
   private attackTimer?: Phaser.Time.TimerEvent;
 
-  constructor(scene: Phaser.Scene, style: AIStyle) {
+  constructor(scene: Phaser.Scene, style: string) {
     this.scene = scene;
     this.style = style;
   }
@@ -68,6 +68,11 @@ export class AIOpponent {
           type: Math.random() > 0.2 ? PunchType.Hook : PunchType.Special,
           delay: 2000 + Math.random() * 1500,
         };
+      default:
+        return {
+          type: this.randomPunchType(),
+          delay: 1000 + Math.random() * 1000,
+        };
     }
   }
 
@@ -78,8 +83,7 @@ export class AIOpponent {
       const punch: PunchEvent = {
         type: punchType,
         power: 0.8 + Math.random() * 0.2,
-        timestamp: Date.now(),
-        isCounter: false,
+        direction: Math.random() > 0.5 ? 'left' : 'right',
         comboPosition: 0,
       };
       this.scene.events.emit('ai_punch', punch);

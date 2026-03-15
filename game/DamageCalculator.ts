@@ -15,7 +15,8 @@ export class DamageCalculator {
     attackerStrength: number,
     defenderDefense: number,
     momentum: number,
-    isBlocked: boolean
+    isBlocked: boolean,
+    isCounter: boolean = false
   ): DamageResult {
     const baseDamage = PUNCH_DAMAGE[punch.type];
     let damage = baseDamage * punch.power;
@@ -30,7 +31,7 @@ export class DamageCalculator {
       damage = Math.max(1, damage);
     }
 
-    if (punch.isCounter) {
+    if (isCounter) {
       damage *= COUNTER_DAMAGE_MULTIPLIER;
     }
 
@@ -45,13 +46,12 @@ export class DamageCalculator {
     const finalDamage = Math.max(1, Math.round(damage));
 
     return {
-      rawDamage: baseDamage,
-      finalDamage,
+      damage: finalDamage,
       isBlocked,
+      hitPart: 'body',
+      triggerDetach: false,
       isCritical: finalDamage > baseDamage * 2,
-      isCounter: punch.isCounter,
-      comboMultiplier,
-      momentumMultiplier,
+      isCounter,
     };
   }
 }

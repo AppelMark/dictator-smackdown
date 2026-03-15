@@ -1,4 +1,8 @@
-import type { CheckoutSession } from '../types/shop';
+interface CheckoutSession {
+  sessionId: string;
+  url: string;
+  productId: string;
+}
 
 export async function createCheckoutSession(
   productId: string,

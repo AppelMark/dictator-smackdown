@@ -1,6 +1,16 @@
-import type { PlayerProfile, CharacterProgress } from '../types/progression';
+import type { PlayerProfile } from '../types/progression';
 import { CharacterArchetype } from '../types/character';
 import { createBrowserClient } from './supabase';
+
+/** Locally defined since CharacterProgress was removed from the types. */
+interface CharacterProgress {
+  archetype: CharacterArchetype;
+  bestScore: number;
+  bestTime: number;
+  stars: 0 | 1 | 2 | 3;
+  attempts: number;
+  defeated: boolean;
+}
 
 function getAnonymousId(): string {
   if (typeof window === 'undefined') return '';
@@ -27,15 +37,17 @@ export async function getOrCreateProfile(): Promise<PlayerProfile> {
       id: '',
       anonymousId,
       displayName: 'Fighter',
-      createdAt: new Date().toISOString(),
-      lastPlayedAt: new Date().toISOString(),
+      totalFights: 0,
       totalWins: 0,
-      totalLosses: 0,
       currentStreak: 0,
-      bestStreak: 0,
+      highScores: {} as Record<CharacterArchetype, number>,
+      stars: {} as Record<CharacterArchetype, 0 | 1 | 2 | 3>,
+      unlockedArchetypes: [],
       purchasedDLC: [],
-      hasCompletedRoad: false,
-      hardModeUnlocked: false,
+      activeSeasonPass: false,
+      trophies: [],
+      createdAt: new Date(),
+      lastSeen: new Date(),
     };
     return newProfile;
   }

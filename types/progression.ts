@@ -3,52 +3,35 @@ import { CharacterArchetype } from './character';
 export interface PlayerProfile {
   id: string;
   anonymousId: string;
+  email?: string;
   displayName: string;
-  createdAt: string;
-  lastPlayedAt: string;
+  totalFights: number;
   totalWins: number;
-  totalLosses: number;
   currentStreak: number;
-  bestStreak: number;
+  highScores: Record<CharacterArchetype, number>;
+  stars: Record<CharacterArchetype, 0 | 1 | 2 | 3>;
+  unlockedArchetypes: CharacterArchetype[];
   purchasedDLC: string[];
-  hasCompletedRoad: boolean;
-  hardModeUnlocked: boolean;
-}
-
-export interface CharacterProgress {
-  playerId: string;
-  archetype: CharacterArchetype;
-  wins: number;
-  losses: number;
-  stars: number;
-  bestScore: number;
-  bestTime: number;
-  unlocked: boolean;
+  activeSeasonPass: boolean;
+  seasonPassExpiry?: Date;
+  trophies: string[];
+  createdAt: Date;
+  lastSeen: Date;
 }
 
 export interface DailyChallenge {
-  challengeDate: string;
+  date: string;
   archetype: CharacterArchetype;
   parScore: number;
-  description: string;
+  topPlayers: { name: string; score: number }[];
 }
 
 export interface ChallengeLink {
   id: string;
-  challengerId: string;
   challengerName: string;
   archetype: CharacterArchetype;
   score: number;
-  createdAt: string;
-  expiresAt: string;
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  playerId: string;
-  displayName: string;
-  archetype: CharacterArchetype;
-  score: number;
-  timeSeconds: number;
-  maxCombo: number;
+  createdAt: Date;
+  completions: number;
+  expiresAt: Date;
 }

@@ -1,4 +1,4 @@
-import { PunchType } from '../../types/character';
+import { PunchType } from '../../types/battle';
 import { HIT_STOP_FRAMES, CAMERA_SHAKE_INTENSITY } from '../constants';
 
 export class JuiceManager {

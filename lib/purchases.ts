@@ -1,4 +1,4 @@
-import type { PaymentPlatform } from '../types/shop';
+type PaymentPlatform = 'ios' | 'android' | 'web';
 
 export function getPlatform(): PaymentPlatform {
   if (typeof window === 'undefined') return 'web';

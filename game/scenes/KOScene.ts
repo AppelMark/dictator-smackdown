@@ -23,7 +23,7 @@ export class KOScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, height / 2, `Score: ${this.result.score}`, {
+      .text(width / 2, height / 2, `Score: ${this.result.scoreBreakdown.totalScore}`, {
         fontSize: '32px',
         color: '#FFD700',
       })
@@ -36,7 +36,10 @@ export class KOScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const stars = '★'.repeat(this.result.stars) + '☆'.repeat(3 - this.result.stars);
+    const starCount = this.result.tookNoDamage ? 3 : this.result.timeSeconds < 90 ? 2 : 1;
+    const stars = this.result.winner === 'player'
+      ? '\u2605'.repeat(starCount) + '\u2606'.repeat(3 - starCount)
+      : '\u2606\u2606\u2606';
     this.add
       .text(width / 2, height / 2 + 90, stars, {
         fontSize: '32px',

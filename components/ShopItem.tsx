@@ -11,7 +11,7 @@ export default function ShopItem({
   item,
   onPurchase,
 }: ShopItemProps): React.JSX.Element {
-  const priceFormatted = (item.priceEurCents / 100).toFixed(2);
+  const priceFormatted = (item.price / 100).toFixed(2);
 
   return (
     <div className="rounded-xl border border-gray-700 p-4">
@@ -23,7 +23,7 @@ export default function ShopItem({
         <span className="text-lg font-bold">€{priceFormatted}</span>
         <button
           onClick={() => onPurchase(item)}
-          disabled={!item.available}
+          disabled={!item.isAvailable}
           className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-bold text-black disabled:opacity-50"
         >
           Buy

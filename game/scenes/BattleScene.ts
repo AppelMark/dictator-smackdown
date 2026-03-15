@@ -1,8 +1,24 @@
 import { CharacterArchetype } from '../../types/character';
-import type { BattleState } from '../../types/battle';
+import { BattleState } from '../../types/battle';
+
+interface BattleSceneState {
+  playerHealth: number;
+  opponentHealth: number;
+  playerMaxHealth: number;
+  opponentMaxHealth: number;
+  playerMomentum: number;
+  opponentMomentum: number;
+  comboCount: number;
+  timeElapsed: number;
+  isPlayerTurn: boolean;
+  isPaused: boolean;
+  archetype: CharacterArchetype;
+  difficulty: number;
+  phase: BattleState;
+}
 
 export class BattleScene extends Phaser.Scene {
-  private battleState!: BattleState;
+  private battleState!: BattleSceneState;
 
   constructor() {
     super({ key: 'BattleScene' });
@@ -23,6 +39,7 @@ export class BattleScene extends Phaser.Scene {
       isPaused: false,
       archetype,
       difficulty: 1,
+      phase: BattleState.Loading,
     };
   }
 
@@ -41,7 +58,7 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  update(time: number, delta: number): void {
+  update(_time: number, delta: number): void {
     if (this.battleState.isPaused) return;
     this.battleState.timeElapsed += delta / 1000;
   }

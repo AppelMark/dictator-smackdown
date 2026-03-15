@@ -1,5 +1,5 @@
-import { PunchType } from '../../types/character';
-import type { PunchEvent, DodgeEvent } from '../../types/battle';
+import { PunchType } from '../../types/battle';
+import type { PunchEvent } from '../../types/battle';
 import {
   COOLDOWN_BETWEEN_PUNCHES_MS,
   DOUBLE_TAP_THRESHOLD_MS,
@@ -7,6 +7,13 @@ import {
   DODGE_MIN_DELTA_X,
   DODGE_MAX_DURATION_MS,
 } from '../constants';
+
+/** Locally defined since DodgeEvent was removed from the types. */
+interface DodgeEvent {
+  direction: 'left' | 'right';
+  timestamp: number;
+  successful: boolean;
+}
 
 export class TapZoneManager {
   private scene: Phaser.Scene;
@@ -67,11 +74,11 @@ export class TapZoneManager {
 
   private emitPunch(type: PunchType, tapDuration: number): void {
     const power = Math.max(0.3, Math.min(1.0, 1.0 - tapDuration / 400));
+    const side: 'left' | 'right' = type === PunchType.Jab || type === PunchType.Cross ? 'left' : 'right';
     const punch: PunchEvent = {
       type,
       power,
-      timestamp: Date.now(),
-      isCounter: false,
+      direction: side,
       comboPosition: this.comboPosition,
     };
     this.comboPosition++;

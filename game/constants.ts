@@ -1,4 +1,6 @@
-import { CharacterArchetype, PunchType } from '../types/character';
+import { CharacterArchetype } from '../types/character';
+import type { CharacterStats } from '../types/character';
+import { PunchType } from '../types/battle';
 
 export const GAME_WIDTH = 390;
 export const GAME_HEIGHT = 844;
@@ -47,18 +49,13 @@ export const FACE_PART_THRESHOLDS: Record<string, number> = {
   all: 1.0,
 };
 
-export const ARCHETYPE_STATS: Record<
-  CharacterArchetype,
-  { health: number; strength: number; defense: number; speed: number; specialDamage: number }
-> = {
-  [CharacterArchetype.DerGroszer]: { health: 100, strength: 90, defense: 40, speed: 30, specialDamage: 50 },
-  [CharacterArchetype.TheDon]: { health: 85, strength: 70, defense: 50, speed: 60, specialDamage: 45 },
-  [CharacterArchetype.TheNationalist]: { health: 75, strength: 60, defense: 35, speed: 95, specialDamage: 35 },
-  [CharacterArchetype.TheChairman]: { health: 90, strength: 55, defense: 85, speed: 40, specialDamage: 40 },
-  [CharacterArchetype.TheAyatollah]: { health: 80, strength: 75, defense: 60, speed: 55, specialDamage: 55 },
-  [CharacterArchetype.TheGeneralissimo]: { health: 110, strength: 95, defense: 70, speed: 25, specialDamage: 60 },
-  [CharacterArchetype.TheOligarch]: { health: 85, strength: 80, defense: 55, speed: 50, specialDamage: 50 },
-  [CharacterArchetype.TheTechMessiah]: { health: 70, strength: 65, defense: 45, speed: 85, specialDamage: 65 },
+export const ARCHETYPE_STATS: Record<CharacterArchetype, CharacterStats> = {
+  [CharacterArchetype.DerGroszer]: { health: 100, maxHealth: 100, stamina: 80, maxStamina: 80, strength: 90, defense: 40, speed: 30, momentum: 50 },
+  [CharacterArchetype.TheDon]: { health: 85, maxHealth: 85, stamina: 90, maxStamina: 90, strength: 70, defense: 50, speed: 60, momentum: 50 },
+  [CharacterArchetype.TheNationalist]: { health: 75, maxHealth: 75, stamina: 100, maxStamina: 100, strength: 60, defense: 35, speed: 95, momentum: 50 },
+  [CharacterArchetype.TheChairman]: { health: 90, maxHealth: 90, stamina: 85, maxStamina: 85, strength: 55, defense: 85, speed: 40, momentum: 50 },
+  [CharacterArchetype.TheAyatollah]: { health: 80, maxHealth: 80, stamina: 90, maxStamina: 90, strength: 75, defense: 60, speed: 55, momentum: 50 },
+  [CharacterArchetype.TheGeneralissimo]: { health: 110, maxHealth: 110, stamina: 70, maxStamina: 70, strength: 95, defense: 70, speed: 25, momentum: 50 },
 };
 
 export const COOLDOWN_BETWEEN_PUNCHES_MS = 200;

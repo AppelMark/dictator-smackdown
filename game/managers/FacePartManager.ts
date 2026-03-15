@@ -1,5 +1,12 @@
 import { FACE_PART_THRESHOLDS } from '../constants';
-import type { FacePart } from '../../types/character';
+
+/** Locally defined since FacePart was removed from the types. */
+interface FacePart {
+  id: string;
+  name: string;
+  healthThreshold: number;
+  sprite: string;
+}
 
 export class FacePartManager {
   private scene: Phaser.Scene;
