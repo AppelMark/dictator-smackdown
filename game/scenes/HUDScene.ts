@@ -12,11 +12,11 @@ interface HUDData {
   specialMeter?: number;
 }
 
-const BAR_WIDTH = 130;
-const BAR_HEIGHT = 14;
-const BAR_Y = 28;
-const PLAYER_BAR_X = 16;
-const AI_BAR_X = GAME_WIDTH - 16 - BAR_WIDTH;
+const BAR_WIDTH = 150;
+const BAR_HEIGHT = 16;
+const BAR_Y = 40;
+const PLAYER_BAR_X = 20;
+const AI_BAR_X = GAME_WIDTH / 2 + 20;
 
 function healthColor(ratio: number): number {
   if (ratio > 0.6) {

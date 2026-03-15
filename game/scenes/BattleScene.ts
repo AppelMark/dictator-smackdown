@@ -113,12 +113,16 @@ export class BattleScene extends Phaser.Scene {
     this.fightStartTime = Date.now();
 
     // --- Fighter placeholders ---
-    this.player = this.add.rectangle(80, 500, 80, 160, 0x3366ff).setDepth(10);
-    this.ai = this.add.rectangle(310, 500, 80, 160, 0xcc3333).setDepth(10);
+    const playerX = GAME_WIDTH * 0.25;
+    const playerY = GAME_HEIGHT * 0.6;
+    const aiX = GAME_WIDTH * 0.75;
+    const aiY = GAME_HEIGHT * 0.6;
+    this.player = this.add.rectangle(playerX, playerY, 80, 160, 0x3366ff).setDepth(10);
+    this.ai = this.add.rectangle(aiX, aiY, 80, 160, 0xcc3333).setDepth(10);
 
     // --- Managers ---
     this.tapZoneManager = new TapZoneManager(this);
-    this.facePartManager = new FacePartManager(this, this.ai.x, this.ai.y - 40);
+    this.facePartManager = new FacePartManager(this, aiX, aiY - 40);
     this.juiceManager = new JuiceManager(this);
     this.comboManager = new ComboManager(this);
     this.aiOpponent = new AIOpponent(
