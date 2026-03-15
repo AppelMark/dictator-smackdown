@@ -564,7 +564,8 @@ export class BattleScene extends Phaser.Scene {
     this.comboManager.registerTakeDamage();
     this.juiceManager.hideComboText();
 
-    // First-person camera impact per punch type
+    // First-person: AI attack animation + camera impact
+    this.aiAttackAnimation(data.type);
     this.cameraImpact(data.type);
     this.cameras.main.flash(80, 255, 50, 50, false, undefined);
 
@@ -859,6 +860,91 @@ export class BattleScene extends Phaser.Scene {
       counterHits: this.totalCounterHits,
       scoreBreakdown,
     };
+  }
+
+  // ============================================================
+  // AI attack animation (first-person — opponent lunges at you)
+  // ============================================================
+
+  private aiAttackAnimation(punchType: PunchType): void {
+    switch (punchType) {
+      case PunchType.Jab:
+        // Fist comes straight at you — scale up quickly
+        this.tweens.add({
+          targets: this.ai,
+          scaleX: 1.15,
+          scaleY: 1.15,
+          duration: 100,
+          yoyo: true,
+          hold: 20,
+          ease: 'Power2',
+        });
+        break;
+
+      case PunchType.Hook: {
+        // Swings from the side — move laterally and scale up
+        const hookDir = Math.random() > 0.5 ? -40 : 40;
+        this.tweens.add({
+          targets: this.ai,
+          x: this.ai.x + hookDir,
+          scaleX: 1.1,
+          scaleY: 1.1,
+          duration: 120,
+          yoyo: true,
+          hold: 30,
+          ease: 'Power2',
+        });
+        break;
+      }
+
+      case PunchType.Uppercut:
+        // Fist comes from below — AI moves up and scales big
+        this.tweens.add({
+          targets: this.ai,
+          y: this.ai.y - 60,
+          scaleX: 1.3,
+          scaleY: 1.3,
+          duration: 130,
+          ease: 'Power3',
+          onComplete: () => {
+            this.tweens.add({
+              targets: this.ai,
+              y: AI_Y,
+              scaleX: 1,
+              scaleY: 1,
+              duration: 250,
+              ease: 'Power1',
+            });
+          },
+        });
+        break;
+
+      case PunchType.Cross:
+        // Body blow — slight forward lunge
+        this.tweens.add({
+          targets: this.ai,
+          scaleX: 1.08,
+          scaleY: 1.08,
+          y: this.ai.y + 15,
+          duration: 100,
+          yoyo: true,
+          hold: 20,
+          ease: 'Power2',
+        });
+        break;
+
+      default:
+        // Generic lunge
+        this.tweens.add({
+          targets: this.ai,
+          scaleX: 1.12,
+          scaleY: 1.12,
+          duration: 100,
+          yoyo: true,
+          ease: 'Power2',
+        });
+        break;
+    }
   }
 
   // ============================================================
