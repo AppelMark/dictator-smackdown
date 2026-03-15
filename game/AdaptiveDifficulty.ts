@@ -1,52 +1,40 @@
-interface DifficultyState {
-  winRate: number;
-  totalFights: number;
-  consecutiveLosses: number;
-  consecutiveWins: number;
-}
+import { CharacterArchetype } from '../types/character';
+import { createBrowserClient } from '../lib/supabase';
 
 export class AdaptiveDifficulty {
-  private state: DifficultyState;
+  async getModifier(
+    anonymousId: string,
+    archetype: CharacterArchetype
+  ): Promise<number> {
+    const supabase = createBrowserClient();
 
-  constructor() {
-    this.state = {
-      winRate: 0.5,
-      totalFights: 0,
-      consecutiveLosses: 0,
-      consecutiveWins: 0,
-    };
-  }
+    const { data: profile } = await supabase
+      .from('player_profiles')
+      .select('id')
+      .eq('anonymous_id', anonymousId)
+      .single();
 
-  recordResult(won: boolean): void {
-    this.state.totalFights++;
-    if (won) {
-      this.state.consecutiveWins++;
-      this.state.consecutiveLosses = 0;
-    } else {
-      this.state.consecutiveLosses++;
-      this.state.consecutiveWins = 0;
-    }
-    this.state.winRate =
-      (this.state.winRate * (this.state.totalFights - 1) + (won ? 1 : 0)) /
-      this.state.totalFights;
-  }
+    if (!profile) return 1.0;
 
-  getAIDamageMultiplier(): number {
-    if (this.state.consecutiveLosses >= 3) return 0.75;
-    if (this.state.consecutiveLosses >= 2) return 0.85;
-    if (this.state.consecutiveWins >= 5) return 1.15;
-    if (this.state.winRate > 0.8 && this.state.totalFights >= 5) return 1.1;
+    const { data: progress } = await supabase
+      .from('character_progress')
+      .select('wins, losses')
+      .eq('player_id', profile.id)
+      .eq('archetype', archetype)
+      .single();
+
+    if (!progress) return 1.0;
+
+    const totalFights = progress.wins + progress.losses;
+    if (totalFights < 3) return 1.0;
+
+    const winRate = progress.wins / totalFights;
+
+    if (winRate > 0.75) return 1.2;
+    if (winRate > 0.60) return 1.1;
+    if (winRate < 0.35) return 0.8;
+    if (winRate < 0.50) return 0.9;
+
     return 1.0;
-  }
-
-  getAIReactionSpeedMultiplier(): number {
-    if (this.state.consecutiveLosses >= 3) return 1.3;
-    if (this.state.consecutiveLosses >= 2) return 1.15;
-    if (this.state.consecutiveWins >= 5) return 0.85;
-    return 1.0;
-  }
-
-  getState(): DifficultyState {
-    return { ...this.state };
   }
 }
