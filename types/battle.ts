@@ -15,6 +15,7 @@ export interface PunchEvent {
   type: PunchType;
   power: number;
   direction: 'left' | 'right';
+  hand: 'left' | 'right';
   comboPosition: number;
 }
 

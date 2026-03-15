@@ -212,7 +212,7 @@ export class BattleScene extends Phaser.Scene {
     this.lastPunchTime = Date.now();
 
     // Animate the correct fist
-    this.animateFistPunch(event.type);
+    this.animateFistPunch(event.type, event.hand);
 
     // Register with AI and combo
     this.aiOpponent.registerPlayerMove(event.type);
@@ -329,26 +329,17 @@ export class BattleScene extends Phaser.Scene {
   // Fist punch animations
   // ============================================================
 
-  private animateFistPunch(type: PunchType): void {
+  private animateFistPunch(type: PunchType, hand: 'left' | 'right'): void {
+    const fist = hand === 'left' ? this.leftFist : this.rightFist;
+    const restX = hand === 'left' ? LEFT_FIST_X : RIGHT_FIST_X;
+    const targetX = hand === 'left' ? TARGET_LEFT_X : TARGET_RIGHT_X;
+
     switch (type) {
       case PunchType.Jab:
-        // Left fist straight to AI center
+        // Straight jab to AI center
         this.tweens.add({
-          targets: this.leftFist,
-          x: TARGET_LEFT_X,
-          y: TARGET_Y,
-          duration: 100,
-          yoyo: true,
-          hold: 30,
-          ease: 'Power2',
-        });
-        break;
-
-      case PunchType.Cross:
-        // Right fist straight to AI center
-        this.tweens.add({
-          targets: this.rightFist,
-          x: TARGET_RIGHT_X,
+          targets: fist,
+          x: targetX,
           y: TARGET_Y,
           duration: 100,
           yoyo: true,
@@ -358,12 +349,14 @@ export class BattleScene extends Phaser.Scene {
         break;
 
       case PunchType.Hook: {
-        // Left fist arcs from left side to center
-        const hookPath = new Phaser.Curves.Path(this.leftFist.x, this.leftFist.y);
+        // Arc from the side into center
+        const sideX = hand === 'left' ? GAME_WIDTH * 0.05 : GAME_WIDTH * 0.95;
+        const ctrlX = hand === 'left' ? GAME_WIDTH * 0.2 : GAME_WIDTH * 0.8;
+        const hookPath = new Phaser.Curves.Path(fist.x, fist.y);
         hookPath.cubicBezierTo(
-          GAME_WIDTH * 0.05, GAME_HEIGHT * 0.5,
-          GAME_WIDTH * 0.2, TARGET_Y,
-          TARGET_LEFT_X, TARGET_Y
+          sideX, GAME_HEIGHT * 0.5,
+          ctrlX, TARGET_Y,
+          targetX, TARGET_Y
         );
 
         const hookFollower = { t: 0 };
@@ -374,12 +367,12 @@ export class BattleScene extends Phaser.Scene {
           ease: 'Power2',
           onUpdate: () => {
             const point = hookPath.getPoint(hookFollower.t);
-            this.leftFist.setPosition(point.x, point.y);
+            fist.setPosition(point.x, point.y);
           },
           onComplete: () => {
             this.tweens.add({
-              targets: this.leftFist,
-              x: LEFT_FIST_X,
+              targets: fist,
+              x: restX,
               y: FIST_Y,
               duration: 150,
               ease: 'Power1',
@@ -389,18 +382,18 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
 
-      case PunchType.Uppercut: {
-        // Right fist from below upward into face
+      case PunchType.Uppercut:
+        // From below upward into face
         this.tweens.add({
-          targets: this.rightFist,
+          targets: fist,
           x: GAME_WIDTH / 2,
           y: TARGET_Y - 30,
           duration: 130,
           ease: 'Power3',
           onComplete: () => {
             this.tweens.add({
-              targets: this.rightFist,
-              x: RIGHT_FIST_X,
+              targets: fist,
+              x: restX,
               y: FIST_Y,
               duration: 180,
               ease: 'Power1',
@@ -408,7 +401,19 @@ export class BattleScene extends Phaser.Scene {
           },
         });
         break;
-      }
+
+      case PunchType.Cross:
+        // Body shot — fist goes to midsection
+        this.tweens.add({
+          targets: fist,
+          x: GAME_WIDTH / 2,
+          y: GAME_HEIGHT * 0.45,
+          duration: 110,
+          yoyo: true,
+          hold: 40,
+          ease: 'Power2',
+        });
+        break;
 
       case PunchType.Special:
         // Both fists converge on AI
@@ -541,6 +546,7 @@ export class BattleScene extends Phaser.Scene {
       type: data.type,
       power: data.power,
       direction: 'left',
+      hand: 'left',
       comboPosition: 0,
     };
 
@@ -653,7 +659,7 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.shake(600, 0.02);
 
     // Both fists animate
-    this.animateFistPunch(PunchType.Special);
+    this.animateFistPunch(PunchType.Special, 'right');
 
     const specialText = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 'SPECIAL MOVE!', {
@@ -703,6 +709,7 @@ export class BattleScene extends Phaser.Scene {
       type: PunchType.Special,
       power: 1.0,
       direction: 'right',
+      hand: 'right',
       comboPosition: 0,
     };
     this.facePartManager.checkAndDetach(this.aiHealth, this.aiMaxHealth, specialPunch);
@@ -731,6 +738,7 @@ export class BattleScene extends Phaser.Scene {
       type: PunchType.Uppercut,
       power: 1.0,
       direction: this.lastPunch?.direction ?? 'right',
+      hand: this.lastPunch?.hand ?? 'right',
       comboPosition: 0,
     };
     this.facePartManager.detachAll(koPunch);
