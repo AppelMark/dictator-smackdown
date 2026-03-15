@@ -7,7 +7,7 @@ export default function HomePage(): React.JSX.Element {
         DICTATOR SMACKDOWN
       </h1>
       <Link
-        href="/battle"
+        href="/select"
         className="mt-10 rounded-xl bg-red-600 px-12 py-4 text-2xl font-bold text-white transition-transform hover:scale-105 active:scale-95"
       >
         START GAME

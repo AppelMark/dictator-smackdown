@@ -4,11 +4,10 @@ import { useEffect } from 'react';
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/constants';
 
 const containerStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: '390px',
+  width: '100vw',
   height: '100dvh',
-  margin: '0 auto',
-  position: 'relative',
+  margin: 0,
+  padding: 0,
   overflow: 'hidden',
   backgroundColor: 'black',
 };
@@ -34,7 +33,7 @@ export default function GameCanvas(): React.JSX.Element {
           },
         },
         scale: {
-          mode: Phaser.Scale.FIT,
+          mode: Phaser.Scale.RESIZE,
           autoCenter: Phaser.Scale.CENTER_BOTH,
         },
         scene: [BattleScene],
