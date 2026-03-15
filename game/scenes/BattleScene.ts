@@ -166,6 +166,8 @@ export class BattleScene extends Phaser.Scene {
     this.events.on('bear_stare', () => this.onBearStare());
     this.events.on('intimidation', () => this.onIntimidation());
     this.events.on('special_charge', () => this.onSpecialCharge());
+    this.events.on('block', (data: { hand: 'left' | 'right' }) => this.onBlock(data.hand));
+    this.events.on('block_release', () => this.onBlockRelease());
     this.events.on('face_part_detached', (partName: string, x: number, y: number) => {
       this.juiceManager.onPartDetach(partName, x, y);
       this.totalPartsDetached++;
@@ -442,34 +444,132 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // ============================================================
-  // Dodge — camera sway (no player sprite to move)
+  // Dodge — first-person camera lean
   // ============================================================
 
   private onDodge(event: { direction: 'left' | 'right' }): void {
     if (this.currentState === BattleState.KO || this.currentState === BattleState.Defeat) return;
 
-    // First-person dodge: sway fists and shift camera
     const dir = event.direction === 'left' ? -1 : 1;
+
+    // Camera leans to the side
+    this.tweens.add({
+      targets: this.cameras.main,
+      scrollX: dir * -60,
+      duration: 100,
+      ease: 'Power2',
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.cameras.main,
+          scrollX: 0,
+          duration: 200,
+          ease: 'Power1',
+        });
+      },
+    });
+
+    // Fists follow the dodge
     this.tweens.add({
       targets: [this.leftFist, this.rightFist],
-      x: `+=${dir * 40}`,
+      x: `+=${dir * 50}`,
       duration: 100,
       yoyo: true,
+      hold: 50,
     });
-    this.cameras.main.shake(80, 0.003);
 
     if (this.telegraphActive) {
+      // Successful dodge
       this.telegraphActive = false;
       this.clearTelegraph();
       this.aiOpponent.stop();
 
       this.juiceManager.onDodgeSuccess();
 
+      // Green vignette flash for successful dodge
+      this.showDodgeVignette();
+
+      // Counter window
       this.counterWindowActive = true;
       this.counterWindowTimer = this.time.delayedCall(COUNTER_WINDOW, () => {
         this.counterWindowActive = false;
       });
     }
+  }
+
+  private showDodgeVignette(): void {
+    const gfx = this.add.graphics().setDepth(45);
+    const w = GAME_WIDTH;
+    const h = GAME_HEIGHT;
+    const thickness = 40;
+
+    gfx.fillStyle(0x33CC33, 0.4);
+    // Top edge
+    gfx.fillRect(0, 0, w, thickness);
+    // Bottom edge
+    gfx.fillRect(0, h - thickness, w, thickness);
+    // Left edge
+    gfx.fillRect(0, 0, thickness, h);
+    // Right edge
+    gfx.fillRect(w - thickness, 0, thickness, h);
+
+    this.tweens.add({
+      targets: gfx,
+      alpha: 0,
+      duration: 400,
+      ease: 'Power2',
+      onComplete: () => gfx.destroy(),
+    });
+  }
+
+  // ============================================================
+  // Block — fists rise as shield
+  // ============================================================
+
+  private onBlock(hand: 'left' | 'right'): void {
+    if (this.currentState === BattleState.KO || this.currentState === BattleState.Defeat) return;
+
+    const fist = hand === 'left' ? this.leftFist : this.rightFist;
+
+    // Fist rises to guard position
+    this.tweens.add({
+      targets: fist,
+      y: GAME_HEIGHT * 0.5,
+      x: hand === 'left' ? GAME_WIDTH * 0.3 : GAME_WIDTH * 0.7,
+      duration: 80,
+      ease: 'Power2',
+    });
+
+    // Camera tilts forward slightly (bracing for impact)
+    this.tweens.add({
+      targets: this.cameras.main,
+      angle: -2,
+      duration: 100,
+    });
+  }
+
+  private onBlockRelease(): void {
+    // Return fists to rest position
+    this.tweens.add({
+      targets: this.leftFist,
+      x: LEFT_FIST_X,
+      y: FIST_Y,
+      duration: 150,
+      ease: 'Power1',
+    });
+    this.tweens.add({
+      targets: this.rightFist,
+      x: RIGHT_FIST_X,
+      y: FIST_Y,
+      duration: 150,
+      ease: 'Power1',
+    });
+
+    // Camera returns to normal
+    this.tweens.add({
+      targets: this.cameras.main,
+      angle: 0,
+      duration: 150,
+    });
   }
 
   // ============================================================
