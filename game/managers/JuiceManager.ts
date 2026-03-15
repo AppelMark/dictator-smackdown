@@ -22,6 +22,11 @@ export class JuiceManager {
   private arenaDegraded50: boolean = false;
   private arenaDegraded25: boolean = false;
 
+  // --- Damage vignette ---
+  private warningVignette?: Phaser.GameObjects.Graphics;
+  private criticalPulseTween?: Phaser.Tweens.Tween;
+  private criticalOverlay?: Phaser.GameObjects.Rectangle;
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.createParticleTextures();
@@ -454,6 +459,102 @@ export class JuiceManager {
   }
 
   // ============================================================
+  // Damage vignette (first-person hit feedback)
+  // ============================================================
+
+  onPlayerDamage(damage: number, currentHealth: number, maxHealth: number): void {
+    const healthRatio = currentHealth / maxHealth;
+    const intensity = Math.min(0.7, damage / maxHealth + 0.15);
+
+    // Flash vignette — scales with damage
+    this.flashDamageVignette(intensity);
+
+    // Persistent warning vignette below 30%
+    if (healthRatio < 0.3 && !this.warningVignette) {
+      this.warningVignette = this.scene.add.graphics().setDepth(42);
+      this.drawVignette(this.warningVignette, 0xff0000, 0.15);
+    }
+
+    // Critical pulse below 15%
+    if (healthRatio < 0.15 && !this.criticalOverlay) {
+      this.criticalOverlay = this.scene.add
+        .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xff0000)
+        .setAlpha(0.05)
+        .setDepth(41);
+
+      this.criticalPulseTween = this.scene.tweens.add({
+        targets: this.criticalOverlay,
+        alpha: { from: 0.05, to: 0.15 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  }
+
+  clearDamageEffects(): void {
+    this.warningVignette?.destroy();
+    this.warningVignette = undefined;
+    this.criticalPulseTween?.stop();
+    this.criticalPulseTween = undefined;
+    this.criticalOverlay?.destroy();
+    this.criticalOverlay = undefined;
+  }
+
+  private flashDamageVignette(intensity: number): void {
+    const gfx = this.scene.add.graphics().setDepth(44);
+    this.drawVignette(gfx, 0xff0000, intensity);
+
+    gfx.setAlpha(0);
+    this.scene.tweens.add({
+      targets: gfx,
+      alpha: 1,
+      duration: 100,
+      onComplete: () => {
+        this.scene.tweens.add({
+          targets: gfx,
+          alpha: 0,
+          duration: 400,
+          ease: 'Power2',
+          onComplete: () => gfx.destroy(),
+        });
+      },
+    });
+  }
+
+  private drawVignette(gfx: Phaser.GameObjects.Graphics, color: number, alpha: number): void {
+    const w = GAME_WIDTH;
+    const h = GAME_HEIGHT;
+    const edge = 50;
+
+    // Top edge — gradient from opaque to transparent
+    for (let i = 0; i < edge; i++) {
+      const a = alpha * (1 - i / edge);
+      gfx.fillStyle(color, a);
+      gfx.fillRect(0, i, w, 1);
+    }
+    // Bottom edge
+    for (let i = 0; i < edge; i++) {
+      const a = alpha * (1 - i / edge);
+      gfx.fillStyle(color, a);
+      gfx.fillRect(0, h - 1 - i, w, 1);
+    }
+    // Left edge
+    for (let i = 0; i < edge; i++) {
+      const a = alpha * (1 - i / edge);
+      gfx.fillStyle(color, a);
+      gfx.fillRect(i, 0, 1, h);
+    }
+    // Right edge
+    for (let i = 0; i < edge; i++) {
+      const a = alpha * (1 - i / edge);
+      gfx.fillStyle(color, a);
+      gfx.fillRect(w - 1 - i, 0, 1, h);
+    }
+  }
+
+  // ============================================================
   // Cleanup
   // ============================================================
 
@@ -462,5 +563,6 @@ export class JuiceManager {
     this.starEmitter?.destroy();
     this.comboText?.destroy();
     this.comboTween?.stop();
+    this.clearDamageEffects();
   }
 }

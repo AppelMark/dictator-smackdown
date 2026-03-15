@@ -664,10 +664,10 @@ export class BattleScene extends Phaser.Scene {
     this.comboManager.registerTakeDamage();
     this.juiceManager.hideComboText();
 
-    // First-person: AI attack animation + camera impact
+    // First-person: AI attack animation + camera impact + damage vignette
     this.aiAttackAnimation(data.type);
     this.cameraImpact(data.type);
-    this.cameras.main.flash(80, 255, 50, 50, false, undefined);
+    this.juiceManager.onPlayerDamage(finalDamage, this.playerHealth, this.playerMaxHealth);
 
     // Dizzy check (below 20% health)
     const healthRatio = this.playerHealth / this.playerMaxHealth;
