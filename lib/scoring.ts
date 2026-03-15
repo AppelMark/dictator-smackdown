@@ -1,5 +1,5 @@
 import type { BattleResult } from '../types/battle';
-import { STAR_TIME_THRESHOLD_SECONDS } from '../game/constants';
+import { STAR_TWO_TIME_LIMIT } from '../game/constants';
 
 export function calculateScore(result: BattleResult): number {
   return result.scoreBreakdown.totalScore;
@@ -10,7 +10,7 @@ export function calculateStars(result: BattleResult): number {
 
   if (result.winner === 'player') {
     stars = 1;
-    if (result.timeSeconds < STAR_TIME_THRESHOLD_SECONDS) {
+    if (result.timeSeconds < STAR_TWO_TIME_LIMIT) {
       stars = 2;
     }
     if (result.tookNoDamage) {

@@ -1,9 +1,9 @@
 import { PunchType } from '../../types/battle';
 import type { PunchEvent } from '../../types/battle';
 import {
-  COOLDOWN_BETWEEN_PUNCHES_MS,
-  DOUBLE_TAP_THRESHOLD_MS,
-  LONG_PRESS_THRESHOLD_MS,
+  TAP_COOLDOWN,
+  TAP_DOUBLE_WINDOW,
+  TAP_HOLD_DURATION,
   DODGE_MIN_DELTA_X,
   DODGE_MAX_DURATION_MS,
 } from '../constants';
@@ -37,7 +37,7 @@ export class TapZoneManager {
 
     this.scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       const now = Date.now();
-      if (now - this.lastPunchTime < COOLDOWN_BETWEEN_PUNCHES_MS) return;
+      if (now - this.lastPunchTime < TAP_COOLDOWN) return;
 
       const deltaX = pointer.x - this.pointerDownX;
       const duration = pointer.upTime - pointer.downTime;
@@ -47,7 +47,7 @@ export class TapZoneManager {
         return;
       }
 
-      if (duration >= LONG_PRESS_THRESHOLD_MS) {
+      if (duration >= TAP_HOLD_DURATION) {
         this.emitPunch(PunchType.Special, duration);
         return;
       }
@@ -57,7 +57,7 @@ export class TapZoneManager {
 
       const isDoubleTap =
         this.lastTapSide === side &&
-        now - this.lastTapTime < DOUBLE_TAP_THRESHOLD_MS;
+        now - this.lastTapTime < TAP_DOUBLE_WINDOW;
 
       if (isDoubleTap) {
         const punchType = side === 'left' ? PunchType.Cross : PunchType.Uppercut;

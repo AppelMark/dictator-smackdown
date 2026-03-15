@@ -1,6 +1,6 @@
 import { PunchType } from '../../types/battle';
 import type { PunchEvent } from '../../types/battle';
-import { TELEGRAPH_DURATION_MS } from '../constants';
+import { TELEGRAPH_DURATION } from '../constants';
 
 interface AIAction {
   type: PunchType;
@@ -79,7 +79,7 @@ export class AIOpponent {
   private telegraph(punchType: PunchType): void {
     this.scene.events.emit('ai_telegraph', { type: punchType });
 
-    this.scene.time.delayedCall(TELEGRAPH_DURATION_MS, () => {
+    this.scene.time.delayedCall(TELEGRAPH_DURATION, () => {
       const punch: PunchEvent = {
         type: punchType,
         power: 0.8 + Math.random() * 0.2,

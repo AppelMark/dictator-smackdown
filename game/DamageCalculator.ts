@@ -2,11 +2,11 @@ import type { PunchEvent, DamageResult } from '../types/battle';
 import {
   PUNCH_DAMAGE,
   COMBO_MULTIPLIERS,
-  COUNTER_DAMAGE_MULTIPLIER,
+  COUNTER_MULTIPLIER,
   MOMENTUM_HIGH_THRESHOLD,
   MOMENTUM_LOW_THRESHOLD,
-  MOMENTUM_HIGH_MULTIPLIER,
-  MOMENTUM_LOW_MULTIPLIER,
+  MOMENTUM_HIGH_BONUS,
+  MOMENTUM_LOW_PENALTY,
 } from './constants';
 
 export class DamageCalculator {
@@ -18,7 +18,7 @@ export class DamageCalculator {
     isBlocked: boolean,
     isCounter: boolean = false
   ): DamageResult {
-    const baseDamage = PUNCH_DAMAGE[punch.type];
+    const baseDamage = PUNCH_DAMAGE[punch.type] ?? 0;
     let damage = baseDamage * punch.power;
     damage *= attackerStrength / 80;
 
@@ -32,16 +32,14 @@ export class DamageCalculator {
     }
 
     if (isCounter) {
-      damage *= COUNTER_DAMAGE_MULTIPLIER;
+      damage *= COUNTER_MULTIPLIER;
     }
 
-    let momentumMultiplier = 1.0;
     if (momentum > MOMENTUM_HIGH_THRESHOLD) {
-      momentumMultiplier = MOMENTUM_HIGH_MULTIPLIER;
+      damage *= 1 + MOMENTUM_HIGH_BONUS;
     } else if (momentum < MOMENTUM_LOW_THRESHOLD) {
-      momentumMultiplier = MOMENTUM_LOW_MULTIPLIER;
+      damage *= 1 - MOMENTUM_LOW_PENALTY;
     }
-    damage *= momentumMultiplier;
 
     const finalDamage = Math.max(1, Math.round(damage));
 

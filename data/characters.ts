@@ -1,6 +1,20 @@
 import { CharacterArchetype } from '../types/character';
-import type { Character } from '../types/character';
+import type { Character, CharacterStats } from '../types/character';
 import { ARCHETYPE_STATS } from '../game/constants';
+import type { ArchetypeConfig } from '../game/constants';
+
+function toCharacterStats(config: ArchetypeConfig): CharacterStats {
+  return {
+    health: config.maxHealth,
+    maxHealth: config.maxHealth,
+    stamina: config.maxStamina,
+    maxStamina: config.maxStamina,
+    strength: config.strength,
+    speed: config.speed,
+    defense: config.defense,
+    momentum: 50,
+  };
+}
 
 export const CHARACTERS: Character[] = [
   {
@@ -11,13 +25,13 @@ export const CHARACTERS: Character[] = [
     description: 'Slow but devastatingly powerful. Watch out for the uppercuts.',
     unlocked: true,
     isPaidDLC: false,
-    stats: ARCHETYPE_STATS[CharacterArchetype.DerGroszer],
+    stats: toCharacterStats(ARCHETYPE_STATS[CharacterArchetype.DerGroszer]),
     moves: [],
     signatureMove: { name: 'Mega Smash', animationKey: 'mega_smash', damage: 50, staminaCost: 40, duration: 1.2, ragdollForce: { x: 0, y: -5 }, comboMultiplier: 1.5 },
     catchphrases: ['SMASH!', 'I CRUSH YOU!'],
     spriteKey: 'der_groszer',
     arenaKey: 'bunker',
-    aiStyle: 'berserker',
+    aiStyle: ARCHETYPE_STATS[CharacterArchetype.DerGroszer].aiStyle,
     difficultyRating: 1,
   },
   {
@@ -28,13 +42,13 @@ export const CHARACTERS: Character[] = [
     description: 'Completely unpredictable. No pattern to exploit.',
     unlocked: true,
     isPaidDLC: false,
-    stats: ARCHETYPE_STATS[CharacterArchetype.TheDon],
+    stats: toCharacterStats(ARCHETYPE_STATS[CharacterArchetype.TheDon]),
     moves: [],
     signatureMove: { name: 'Surprise Strike', animationKey: 'surprise_strike', damage: 45, staminaCost: 35, duration: 1.0, ragdollForce: { x: 3, y: -3 }, comboMultiplier: 1.4 },
     catchphrases: ['Surprise!', 'You never know what\'s next!'],
     spriteKey: 'the_don',
     arenaKey: 'palace',
-    aiStyle: 'chaotic',
+    aiStyle: ARCHETYPE_STATS[CharacterArchetype.TheDon].aiStyle,
     difficultyRating: 2,
   },
   {
@@ -45,13 +59,13 @@ export const CHARACTERS: Character[] = [
     description: 'Extremely fast jabs. Dodge or be overwhelmed.',
     unlocked: false,
     isPaidDLC: false,
-    stats: ARCHETYPE_STATS[CharacterArchetype.TheNationalist],
+    stats: toCharacterStats(ARCHETYPE_STATS[CharacterArchetype.TheNationalist]),
     moves: [],
     signatureMove: { name: 'Blitz Rush', animationKey: 'blitz_rush', damage: 35, staminaCost: 30, duration: 0.8, ragdollForce: { x: 5, y: -1 }, comboMultiplier: 1.6 },
     catchphrases: ['Speed kills!', 'Too fast for you!'],
     spriteKey: 'the_nationalist',
     arenaKey: 'rally',
-    aiStyle: 'speedster',
+    aiStyle: ARCHETYPE_STATS[CharacterArchetype.TheNationalist].aiStyle,
     difficultyRating: 3,
   },
   {
@@ -62,13 +76,13 @@ export const CHARACTERS: Character[] = [
     description: 'Blocks almost everything. Find the opening.',
     unlocked: false,
     isPaidDLC: false,
-    stats: ARCHETYPE_STATS[CharacterArchetype.TheChairman],
+    stats: toCharacterStats(ARCHETYPE_STATS[CharacterArchetype.TheChairman]),
     moves: [],
     signatureMove: { name: 'Iron Wall', animationKey: 'iron_wall', damage: 40, staminaCost: 35, duration: 1.5, ragdollForce: { x: 0, y: -4 }, comboMultiplier: 1.3 },
     catchphrases: ['Try again!', 'Your efforts are futile!'],
     spriteKey: 'the_chairman',
     arenaKey: 'great_hall',
-    aiStyle: 'defensive',
+    aiStyle: ARCHETYPE_STATS[CharacterArchetype.TheChairman].aiStyle,
     difficultyRating: 4,
   },
   {
@@ -79,13 +93,13 @@ export const CHARACTERS: Character[] = [
     description: 'Punishes repetition. Vary your attacks or pay the price.',
     unlocked: false,
     isPaidDLC: false,
-    stats: ARCHETYPE_STATS[CharacterArchetype.TheAyatollah],
+    stats: toCharacterStats(ARCHETYPE_STATS[CharacterArchetype.TheAyatollah]),
     moves: [],
     signatureMove: { name: 'Divine Retribution', animationKey: 'divine_retribution', damage: 55, staminaCost: 45, duration: 1.3, ragdollForce: { x: -2, y: -6 }, comboMultiplier: 1.8 },
     catchphrases: ['Predictable!', 'I see your pattern!'],
     spriteKey: 'the_ayatollah',
     arenaKey: 'temple',
-    aiStyle: 'counter',
+    aiStyle: ARCHETYPE_STATS[CharacterArchetype.TheAyatollah].aiStyle,
     difficultyRating: 5,
   },
   {
@@ -96,13 +110,13 @@ export const CHARACTERS: Character[] = [
     description: 'Slow but devastating. The ultimate challenge.',
     unlocked: false,
     isPaidDLC: false,
-    stats: ARCHETYPE_STATS[CharacterArchetype.TheGeneralissimo],
+    stats: toCharacterStats(ARCHETYPE_STATS[CharacterArchetype.TheGeneralissimo]),
     moves: [],
     signatureMove: { name: 'Supreme Slam', animationKey: 'supreme_slam', damage: 60, staminaCost: 50, duration: 1.8, ragdollForce: { x: 0, y: -8 }, comboMultiplier: 2.0 },
     catchphrases: ['BOW DOWN!', 'I am the supreme leader!'],
     spriteKey: 'the_generalissimo',
     arenaKey: 'fortress',
-    aiStyle: 'boss',
+    aiStyle: ARCHETYPE_STATS[CharacterArchetype.TheGeneralissimo].aiStyle,
     difficultyRating: 6,
   },
 ];
