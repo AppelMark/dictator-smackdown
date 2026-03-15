@@ -1,44 +1,79 @@
-import { COMBO_MULTIPLIERS } from '../constants';
-
 export class ComboManager {
-  private comboCount: number = 0;
-  private maxCombo: number = 0;
+  private scene: Phaser.Scene;
+  private currentCombo: number = 0;
+  private maxComboThisFight: number = 0;
   private lastHitTime: number = 0;
-  private comboTimeout: number = 2000;
+  private breakTimer?: Phaser.Time.TimerEvent;
 
-  getComboCount(): number {
-    return this.comboCount;
-  }
-
-  getMaxCombo(): number {
-    return this.maxCombo;
-  }
-
-  getMultiplier(): number {
-    const index = Math.min(this.comboCount, COMBO_MULTIPLIERS.length - 1);
-    return COMBO_MULTIPLIERS[index];
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
   }
 
   registerHit(): number {
-    const now = Date.now();
-    if (now - this.lastHitTime > this.comboTimeout) {
-      this.comboCount = 0;
+    this.currentCombo++;
+
+    if (this.currentCombo > this.maxComboThisFight) {
+      this.maxComboThisFight = this.currentCombo;
     }
-    this.comboCount++;
-    this.lastHitTime = now;
-    if (this.comboCount > this.maxCombo) {
-      this.maxCombo = this.comboCount;
+
+    if (this.breakTimer) {
+      this.breakTimer.destroy();
     }
-    return this.comboCount;
+
+    this.breakTimer = this.scene.time.delayedCall(1500, () => {
+      this.onBreakTimeout();
+    });
+
+    this.lastHitTime = Date.now();
+
+    return this.currentCombo;
   }
 
-  breakCombo(): void {
-    this.comboCount = 0;
+  registerMiss(): void {
+    if (this.currentCombo > 1) {
+      this.scene.events.emit('combo_broken', this.currentCombo);
+    }
+    this.currentCombo = 0;
+  }
+
+  registerTakeDamage(): void {
+    if (this.currentCombo > 1) {
+      this.scene.events.emit('combo_broken', this.currentCombo);
+    }
+    this.currentCombo = 0;
+  }
+
+  getMultiplierIndex(): number {
+    return Math.min(this.currentCombo, 4);
+  }
+
+  getComboCount(): number {
+    return this.currentCombo;
+  }
+
+  getMaxCombo(): number {
+    return this.maxComboThisFight;
+  }
+
+  getLastHitTime(): number {
+    return this.lastHitTime;
+  }
+
+  private onBreakTimeout(): void {
+    this.currentCombo = 0;
   }
 
   reset(): void {
-    this.comboCount = 0;
-    this.maxCombo = 0;
-    this.lastHitTime = 0;
+    this.currentCombo = 0;
+    this.maxComboThisFight = 0;
+
+    if (this.breakTimer) {
+      this.breakTimer.destroy();
+      this.breakTimer = undefined;
+    }
+  }
+
+  destroy(): void {
+    this.reset();
   }
 }
