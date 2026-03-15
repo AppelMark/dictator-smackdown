@@ -26,10 +26,11 @@ const AI_Y = GAME_HEIGHT * 0.4;
 const AI_W = 200;
 const AI_H = 240;
 
-const FIST_Y = GAME_HEIGHT * 0.75;
-const LEFT_FIST_X = GAME_WIDTH * 0.15;
-const RIGHT_FIST_X = GAME_WIDTH * 0.85;
-const FIST_SIZE = 50;
+const FIST_Y = GAME_HEIGHT * 0.8;
+const LEFT_FIST_X = GAME_WIDTH * 0.2;
+const RIGHT_FIST_X = GAME_WIDTH * 0.8;
+const FIST_W = 60;
+const FIST_H = 70;
 
 // --- Punch target positions ---
 const TARGET_LEFT_X = GAME_WIDTH * 0.45;
@@ -48,6 +49,8 @@ export class BattleScene extends Phaser.Scene {
   private ai!: Phaser.GameObjects.Rectangle;
   private leftFist!: Phaser.GameObjects.Rectangle;
   private rightFist!: Phaser.GameObjects.Rectangle;
+  private leftFistGfx?: Phaser.GameObjects.Container;
+  private rightFistGfx?: Phaser.GameObjects.Container;
 
   // --- State ---
   private playerHealth: number = 100;
@@ -134,13 +137,20 @@ export class BattleScene extends Phaser.Scene {
     // --- AI opponent (large, centered, first-person view) ---
     this.ai = this.add.rectangle(AI_X, AI_Y, AI_W, AI_H, 0xcc3333).setDepth(5);
 
-    // --- Player fists (bottom of screen) ---
+    // --- Player fists (placeholder claymation gloves) ---
+    this.createFistTextures();
     this.leftFist = this.add
-      .rectangle(LEFT_FIST_X, FIST_Y, FIST_SIZE, FIST_SIZE, 0x3366ff)
+      .rectangle(LEFT_FIST_X, FIST_Y, FIST_W, FIST_H, 0x000000)
+      .setAlpha(0)
       .setDepth(20);
     this.rightFist = this.add
-      .rectangle(RIGHT_FIST_X, FIST_Y, FIST_SIZE, FIST_SIZE, 0x3366ff)
+      .rectangle(RIGHT_FIST_X, FIST_Y, FIST_W, FIST_H, 0x000000)
+      .setAlpha(0)
       .setDepth(20);
+
+    // Visual fist graphics attached to the invisible rectangles
+    this.createFistGraphic(LEFT_FIST_X, FIST_Y, 10, 'leftFistGfx');
+    this.createFistGraphic(RIGHT_FIST_X, FIST_Y, -10, 'rightFistGfx');
 
     // --- Managers ---
     this.tapZoneManager = new TapZoneManager(this);
@@ -193,6 +203,14 @@ export class BattleScene extends Phaser.Scene {
       this.playerMomentum = Math.max(50, this.playerMomentum - 3 * (delta / 1000));
     } else if (this.playerMomentum < 50) {
       this.playerMomentum = Math.min(50, this.playerMomentum + 3 * (delta / 1000));
+    }
+
+    // Sync fist graphics to hitbox positions
+    if (this.leftFistGfx) {
+      this.leftFistGfx.setPosition(this.leftFist.x, this.leftFist.y);
+    }
+    if (this.rightFistGfx) {
+      this.rightFistGfx.setPosition(this.rightFist.x, this.rightFist.y);
     }
 
     // Arena degradation
@@ -440,6 +458,63 @@ export class BattleScene extends Phaser.Scene {
           hold: 50,
         });
         break;
+    }
+  }
+
+  // ============================================================
+  // Fist graphics (placeholder claymation gloves)
+  // ============================================================
+
+  private createFistTextures(): void {
+    // Textures are generated procedurally — no external assets needed
+  }
+
+  private createFistGraphic(x: number, y: number, angleDeg: number, key: string): void {
+    const container = this.add.container(x, y).setDepth(21);
+    container.setAngle(angleDeg);
+
+    // Wrist / arm stub
+    const wrist = this.add.rectangle(0, FIST_H * 0.4, FIST_W * 0.5, 30, 0xE8985E);
+    container.add(wrist);
+
+    // Main fist body — rounded
+    const fistBody = this.add.rectangle(0, 0, FIST_W, FIST_H, 0xF4A460);
+    fistBody.setStrokeStyle(2, 0xD2893C);
+    container.add(fistBody);
+
+    // Knuckle ridge — darker strip across the top
+    const knuckles = this.add.rectangle(0, -FIST_H * 0.3, FIST_W * 0.85, 14, 0xE8985E);
+    container.add(knuckles);
+
+    // Individual knuckle bumps
+    for (let i = 0; i < 4; i++) {
+      const kx = -FIST_W * 0.3 + i * (FIST_W * 0.2);
+      const bump = this.add.circle(kx, -FIST_H * 0.3, 5, 0xDC8750);
+      container.add(bump);
+    }
+
+    // Thumb
+    const thumb = this.add.ellipse(
+      angleDeg > 0 ? FIST_W * 0.35 : -FIST_W * 0.35,
+      FIST_H * 0.05,
+      14, 22, 0xF4A460
+    );
+    thumb.setStrokeStyle(1, 0xD2893C);
+    container.add(thumb);
+
+    // Glove tape wrapping — white strips
+    const tape1 = this.add.rectangle(0, FIST_H * 0.15, FIST_W * 0.9, 4, 0xEEEEEE);
+    tape1.setAlpha(0.6);
+    container.add(tape1);
+
+    const tape2 = this.add.rectangle(0, FIST_H * 0.25, FIST_W * 0.85, 3, 0xEEEEEE);
+    tape2.setAlpha(0.4);
+    container.add(tape2);
+
+    if (key === 'leftFistGfx') {
+      this.leftFistGfx = container;
+    } else {
+      this.rightFistGfx = container;
     }
   }
 
@@ -1187,6 +1262,8 @@ export class BattleScene extends Phaser.Scene {
     this.aiOpponent.destroy();
     this.clearTelegraph();
     this.stopDizzySway();
+    this.leftFistGfx?.destroy();
+    this.rightFistGfx?.destroy();
     this.counterWindowTimer?.destroy();
     this.scene.stop('HUDScene');
     this.events.removeAllListeners();
