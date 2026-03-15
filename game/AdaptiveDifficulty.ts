@@ -8,16 +8,16 @@ export class AdaptiveDifficulty {
   ): Promise<number> {
     const supabase = createBrowserClient();
 
-    const { data: profile } = await supabase
-      .from('player_profiles')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from('player_profiles') as any)
       .select('id')
       .eq('anonymous_id', anonymousId)
       .single();
 
     if (!profile) return 1.0;
 
-    const { data: progress } = await supabase
-      .from('character_progress')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: progress } = await (supabase.from('character_progress') as any)
       .select('wins, losses')
       .eq('player_id', profile.id)
       .eq('archetype', archetype)

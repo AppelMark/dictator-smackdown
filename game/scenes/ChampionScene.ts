@@ -214,7 +214,6 @@ export class ChampionScene extends Phaser.Scene {
         fontSize: '13px',
         color: '#666666',
         fontFamily: 'Arial',
-        textDecoration: 'underline',
       })
       .setOrigin(0.5)
       .setDepth(20)
@@ -251,11 +250,7 @@ export class ChampionScene extends Phaser.Scene {
       const xScale = Math.cos(offset) * radius;
 
       this.globeGfx.lineStyle(1, 0xFFD700, 0.3);
-      this.globeGfx.beginPath();
-      this.globeGfx.ellipse(
-        cx, cy, Math.abs(xScale), radius, 0, 0, Math.PI * 2, false
-      );
-      this.globeGfx.strokePath();
+      this.globeGfx.strokeEllipse(cx, cy, Math.abs(xScale) * 2, radius * 2);
     }
 
     // Latitude lines
@@ -344,8 +339,8 @@ export class ChampionScene extends Phaser.Scene {
       const supabase = createBrowserClient();
 
       // Reset all character progress for hard mode replay
-      await supabase
-        .from('character_progress')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('character_progress') as any)
         .update({
           wins: 0,
           losses: 0,

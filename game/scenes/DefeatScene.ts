@@ -224,7 +224,6 @@ export class DefeatScene extends Phaser.Scene {
         fontSize: '13px',
         color: '#888888',
         fontFamily: 'Arial',
-        textDecoration: 'underline',
       })
       .setOrigin(0.5)
       .setDepth(20)

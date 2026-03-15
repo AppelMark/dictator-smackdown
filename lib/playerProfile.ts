@@ -52,21 +52,21 @@ export async function getOrCreateProfile(): Promise<PlayerProfileRow> {
 
   const supabase = createBrowserClient();
 
-  const { data, error } = await supabase
-    .from('player_profiles')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from('player_profiles') as any)
     .select('*')
     .eq('anonymous_id', anonymousId)
     .single();
 
   if (!error && data) {
-    cachedProfile = data;
+    cachedProfile = data as PlayerProfileRow;
     return cachedProfile;
   }
 
   const displayName = generateFunnyName();
 
-  const { data: newData, error: insertError } = await supabase
-    .from('player_profiles')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: newData, error: insertError } = await (supabase.from('player_profiles') as any)
     .insert({
       anonymous_id: anonymousId,
       display_name: displayName,
@@ -78,7 +78,7 @@ export async function getOrCreateProfile(): Promise<PlayerProfileRow> {
     throw new Error(`Failed to create profile: ${insertError?.message}`);
   }
 
-  cachedProfile = newData;
+  cachedProfile = newData as PlayerProfileRow;
   return cachedProfile;
 }
 
@@ -94,8 +94,8 @@ export async function updateAfterFight(
   const won = result.winner === 'player';
 
   // --- Update player_profiles ---
-  const { error: profileError } = await supabase
-    .from('player_profiles')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: profileError } = await (supabase.from('player_profiles') as any)
     .update({
       total_fights: profile.total_fights + 1,
       total_wins: won ? profile.total_wins + 1 : profile.total_wins,
@@ -124,8 +124,8 @@ export async function updateAfterFight(
   }
 
   // --- Upsert character_progress ---
-  const { data: existing } = await supabase
-    .from('character_progress')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase.from('character_progress') as any)
     .select('*')
     .eq('player_id', profile.id)
     .eq('archetype', archetype)
@@ -133,8 +133,8 @@ export async function updateAfterFight(
 
   if (existing) {
     const timeSeconds = Math.round(result.timeSeconds);
-    const { error: progressError } = await supabase
-      .from('character_progress')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: progressError } = await (supabase.from('character_progress') as any)
       .update({
         wins: won ? existing.wins + 1 : existing.wins,
         losses: won ? existing.losses : existing.losses + 1,
@@ -151,8 +151,8 @@ export async function updateAfterFight(
 
     if (progressError) throw new Error(`Progress update failed: ${progressError.message}`);
   } else {
-    const { error: insertError } = await supabase
-      .from('character_progress')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: insertError } = await (supabase.from('character_progress') as any)
       .insert({
         player_id: profile.id,
         archetype,
@@ -170,8 +170,8 @@ export async function updateAfterFight(
   }
 
   // --- Save score ---
-  const { error: scoreError } = await supabase
-    .from('scores')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: scoreError } = await (supabase.from('scores') as any)
     .insert({
       player_id: profile.id,
       archetype,
@@ -191,24 +191,24 @@ export async function updateAfterFight(
     unlocked = checkAndUnlockNext(archetype);
 
     if (unlocked) {
-      const { data: alreadyExists } = await supabase
-        .from('character_progress')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: alreadyExists } = await (supabase.from('character_progress') as any)
         .select('id')
         .eq('player_id', profile.id)
         .eq('archetype', unlocked)
         .single();
 
       if (!alreadyExists) {
-        await supabase
-          .from('character_progress')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('character_progress') as any)
           .insert({
             player_id: profile.id,
             archetype: unlocked,
             is_unlocked: true,
           });
       } else {
-        await supabase
-          .from('character_progress')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('character_progress') as any)
           .update({ is_unlocked: true })
           .eq('id', alreadyExists.id);
       }
@@ -243,8 +243,8 @@ export async function updateLastSeen(): Promise<void> {
   const profile = await getOrCreateProfile();
   const supabase = createBrowserClient();
 
-  const { error } = await supabase
-    .from('player_profiles')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('player_profiles') as any)
     .update({ last_seen: new Date().toISOString() })
     .eq('id', profile.id);
 
