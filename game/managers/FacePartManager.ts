@@ -95,13 +95,13 @@ export class FacePartManager {
       shape: { type: 'circle', radius: 10 },
     }) as Phaser.Physics.Matter.Sprite;
 
-    // Calculate velocity based on punch direction
+    // First-person: parts fly toward the camera (downward + slight sideways)
     const dirSign = punch.direction === 'left' ? -1 : 1;
-    const baseVelX = dirSign * (6 + Math.random() * 4);
     const isUppercut = punch.type === PunchType.Uppercut;
+    const baseVelX = dirSign * (2 + Math.random() * 4);
     const baseVelY = isUppercut
-      ? -(12 + Math.random() * 6)
-      : -(3 + Math.random() * 3);
+      ? 8 + Math.random() * 6
+      : 5 + Math.random() * 5;
 
     const velX = baseVelX * velocityScale;
     const velY = baseVelY * velocityScale;

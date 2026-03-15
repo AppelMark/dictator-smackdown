@@ -22,9 +22,9 @@ import { updateAfterFight } from '../../lib/playerProfile';
 
 // --- First-person positions ---
 const AI_X = GAME_WIDTH / 2;
-const AI_Y = GAME_HEIGHT * 0.4;
-const AI_W = 200;
-const AI_H = 240;
+const AI_Y = GAME_HEIGHT * 0.35;
+const AI_W = GAME_WIDTH * 0.45;
+const AI_H = GAME_HEIGHT * 0.45;
 
 const FIST_Y = GAME_HEIGHT * 0.8;
 const LEFT_FIST_X = GAME_WIDTH * 0.2;
@@ -326,14 +326,41 @@ export class BattleScene extends Phaser.Scene {
       this.juiceManager.onComboHit(comboCount);
     }
 
-    // AI recoil
-    this.tweens.add({
-      targets: this.ai,
-      y: this.ai.y - 10,
-      scaleX: 0.95,
-      duration: 75,
-      yoyo: true,
-    });
+    // AI recoil — direction depends on punch type
+    if (event.type === PunchType.Uppercut) {
+      // Uppercut: AI flies upward with arc
+      this.tweens.add({
+        targets: this.ai,
+        y: this.ai.y - 50,
+        scaleX: 0.9,
+        scaleY: 1.1,
+        duration: 150,
+        ease: 'Power2',
+        onComplete: () => {
+          this.tweens.add({
+            targets: this.ai,
+            y: AI_Y,
+            scaleX: 1,
+            scaleY: 1,
+            duration: 300,
+            ease: 'Bounce.easeOut',
+          });
+        },
+      });
+    } else {
+      // Jab/Hook/Cross: AI moves in punch direction
+      const recoilX = event.hand === 'left' ? 25 : -25;
+      this.tweens.add({
+        targets: this.ai,
+        x: this.ai.x + recoilX,
+        scaleX: 0.95,
+        duration: 75,
+        yoyo: true,
+        onComplete: () => {
+          this.ai.x = AI_X;
+        },
+      });
+    }
 
     this.facePartManager.updateContainerPosition(this.ai.x, this.ai.y);
     this.emitHUDUpdate();
