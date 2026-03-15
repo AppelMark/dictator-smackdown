@@ -77,6 +77,10 @@ export class BattleScene extends Phaser.Scene {
   private lastPunchTime: number = 0;
   private hudUpdateTimer: number = 0;
 
+  // --- Camera effects ---
+  private dizzySway?: Phaser.Tweens.Tween;
+  private isDizzy: boolean = false;
+
   // --- Config ---
   private archetype: CharacterArchetype = CharacterArchetype.DerGroszer;
   private difficulty: number = 1;
@@ -560,10 +564,15 @@ export class BattleScene extends Phaser.Scene {
     this.comboManager.registerTakeDamage();
     this.juiceManager.hideComboText();
 
-    // First-person hit: camera shake + red flash (you're getting hit)
-    const shakeIntensity = data.type === PunchType.Uppercut ? 0.025 : 0.015;
-    this.cameras.main.shake(200, shakeIntensity);
-    this.cameras.main.flash(100, 255, 50, 50, false, undefined);
+    // First-person camera impact per punch type
+    this.cameraImpact(data.type);
+    this.cameras.main.flash(80, 255, 50, 50, false, undefined);
+
+    // Dizzy check (below 20% health)
+    const healthRatio = this.playerHealth / this.playerMaxHealth;
+    if (healthRatio > 0 && healthRatio < 0.2 && !this.isDizzy) {
+      this.startDizzySway();
+    }
 
     this.emitHUDUpdate();
 
@@ -770,19 +779,39 @@ export class BattleScene extends Phaser.Scene {
   private checkPlayerKO(): void {
     this.currentState = BattleState.Defeat;
     this.aiOpponent.stop();
+    this.stopDizzySway();
 
-    // First-person: heavy shake and fade to black
-    this.cameras.main.shake(600, 0.03);
+    // First-person KO: camera falls and rotates
+    this.cameras.main.shake(300, 0.025);
 
     // Fists drop
     this.tweens.add({
       targets: [this.leftFist, this.rightFist],
       y: GAME_HEIGHT + 50,
       alpha: 0,
-      duration: 500,
+      duration: 600,
     });
 
-    this.time.delayedCall(600, () => {
+    // Camera falls down and tilts
+    this.tweens.add({
+      targets: this.cameras.main,
+      scrollY: -120,
+      duration: 1200,
+      ease: 'Bounce.easeOut',
+    });
+    this.tweens.add({
+      targets: this.cameras.main,
+      angle: 12,
+      duration: 1000,
+      ease: 'Power2',
+    });
+
+    // Fade to black
+    this.time.delayedCall(800, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+    });
+
+    this.time.delayedCall(1400, () => {
       const timeSeconds = (Date.now() - this.fightStartTime) / 1000;
       const result = this.buildBattleResult('ai', timeSeconds);
 
@@ -833,6 +862,102 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // ============================================================
+  // Camera impact (first-person)
+  // ============================================================
+
+  private cameraImpact(punchType: PunchType): void {
+    const cam = this.cameras.main;
+
+    switch (punchType) {
+      case PunchType.Jab:
+        // Head snaps to the side
+        this.tweens.add({
+          targets: cam,
+          scrollX: -15,
+          duration: 40,
+          yoyo: true,
+          hold: 10,
+          ease: 'Power2',
+        });
+        break;
+
+      case PunchType.Hook:
+        // Head rotates from the hook impact
+        cam.setAngle(0);
+        this.tweens.add({
+          targets: cam,
+          angle: 8,
+          duration: 80,
+          yoyo: true,
+          hold: 20,
+          ease: 'Power2',
+        });
+        break;
+
+      case PunchType.Uppercut:
+        // Head snaps upward and bounces back
+        this.tweens.add({
+          targets: cam,
+          scrollY: 30,
+          duration: 80,
+          ease: 'Power3',
+          onComplete: () => {
+            this.tweens.add({
+              targets: cam,
+              scrollY: 0,
+              duration: 300,
+              ease: 'Bounce.easeOut',
+            });
+          },
+        });
+        break;
+
+      case PunchType.Cross:
+        // Body shot — camera dips down slightly
+        this.tweens.add({
+          targets: cam,
+          scrollY: -10,
+          duration: 60,
+          yoyo: true,
+          ease: 'Power2',
+        });
+        break;
+
+      default:
+        cam.shake(150, 0.012);
+        break;
+    }
+  }
+
+  // ============================================================
+  // Dizzy sway (below 20% health)
+  // ============================================================
+
+  private startDizzySway(): void {
+    if (this.isDizzy) return;
+    this.isDizzy = true;
+
+    this.dizzySway = this.tweens.add({
+      targets: this.cameras.main,
+      angle: { from: -1.5, to: 1.5 },
+      scrollX: { from: -5, to: 5 },
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private stopDizzySway(): void {
+    if (!this.isDizzy) return;
+    this.isDizzy = false;
+    this.dizzySway?.stop();
+    this.dizzySway = undefined;
+    this.cameras.main.setAngle(0);
+    this.cameras.main.setScroll(0, 0);
+  }
+
+  // ============================================================
   // HUD
   // ============================================================
 
@@ -875,6 +1000,7 @@ export class BattleScene extends Phaser.Scene {
     this.comboManager.destroy();
     this.aiOpponent.destroy();
     this.clearTelegraph();
+    this.stopDizzySway();
     this.counterWindowTimer?.destroy();
     this.scene.stop('HUDScene');
     this.events.removeAllListeners();
