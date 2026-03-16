@@ -99,12 +99,19 @@ const EFFECT_PROMPTS = {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let apiCallCount = 0;
+const MAX_RETRIES = 5;
 
 async function replicatePredict(version, input) {
   apiCallCount++;
   console.log(`  [API call #${apiCallCount}] Starting prediction...`);
 
-  try {
+  // Retry loop for rate limiting
+  let attempt = 0;
+  let createData;
+
+  while (attempt < MAX_RETRIES) {
+    attempt++;
+
     const createRes = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -114,37 +121,64 @@ async function replicatePredict(version, input) {
       body: JSON.stringify({ version, input }),
     });
 
-    const createData = await createRes.json();
-    const predictionId = createData.id;
-
-    if (!predictionId) {
-      throw new Error(`Failed to create prediction: ${JSON.stringify(createData)}`);
+    if (createRes.status === 429) {
+      const body = await createRes.json().catch(() => ({}));
+      const retryAfter = Number(body.retry_after || 10);
+      const waitTime = retryAfter + 2;
+      console.log(`  Rate limited, waiting ${waitTime} seconds before retry... (attempt ${attempt}/${MAX_RETRIES})`);
+      await sleep(waitTime * 1000);
+      continue;
     }
 
-    // Poll until complete
-    let prediction = createData;
-    while (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-      await sleep(3000);
+    createData = await createRes.json();
+    break;
+  }
+
+  if (!createData) {
+    throw new Error(`Rate limited after ${MAX_RETRIES} retries`);
+  }
+
+  const predictionId = createData.id;
+  if (!predictionId) {
+    throw new Error(`Failed to create prediction: ${JSON.stringify(createData)}`);
+  }
+
+  // Poll until complete (also with rate limit handling)
+  let prediction = createData;
+  while (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+    await sleep(3000);
+
+    let pollAttempt = 0;
+    while (pollAttempt < MAX_RETRIES) {
+      pollAttempt++;
       const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
         headers: { Authorization: `Bearer ${REPLICATE_API_TOKEN}` },
       });
+
+      if (pollRes.status === 429) {
+        const body = await pollRes.json().catch(() => ({}));
+        const retryAfter = Number(body.retry_after || 5);
+        const waitTime = retryAfter + 2;
+        console.log(`  Rate limited on poll, waiting ${waitTime} seconds...`);
+        await sleep(waitTime * 1000);
+        continue;
+      }
+
       prediction = await pollRes.json();
-      process.stdout.write('.');
+      break;
     }
-    console.log(` ${prediction.status}`);
-
-    if (prediction.status === 'failed') {
-      throw new Error(`Prediction failed: ${prediction.error}`);
-    }
-
-    const output = prediction.output;
-    if (Array.isArray(output) && output.length > 0) return output[0];
-    if (typeof output === 'string') return output;
-    throw new Error(`Unexpected output format: ${JSON.stringify(output)}`);
-  } catch (err) {
-    console.error(`  API error: ${err.message}`);
-    throw err;
+    process.stdout.write('.');
   }
+  console.log(` ${prediction.status}`);
+
+  if (prediction.status === 'failed') {
+    throw new Error(`Prediction failed: ${prediction.error}`);
+  }
+
+  const output = prediction.output;
+  if (Array.isArray(output) && output.length > 0) return output[0];
+  if (typeof output === 'string') return output;
+  throw new Error(`Unexpected output format: ${JSON.stringify(output)}`);
 }
 
 async function downloadFile(url, outputPath) {
@@ -226,6 +260,19 @@ async function generateImg2Img(prompt, imageUrl, outputPath, promptStrength = 0.
 // Main pipeline
 // ============================================================
 
+const succeeded = [];
+const failed = [];
+
+async function tryGenerate(label, fn) {
+  try {
+    await fn();
+    succeeded.push(label);
+  } catch (err) {
+    console.error(`\n  ✗ FAILED: ${label} — ${err.message}`);
+    failed.push(label);
+  }
+}
+
 async function main() {
   console.log('='.repeat(60));
   console.log('Der Großer Asset Generation Pipeline');
@@ -239,26 +286,38 @@ async function main() {
 
   // ---- PART 1: Base reference ----
   console.log('\n--- PART 1: Base Character Reference ---');
-  const baseRefPath = path.join(OUTPUT_BASE, 'base_reference.png');
-  const baseRefUrl = await generateSDXL(BASE_PROMPT, baseRefPath);
+  let baseRefUrl = null;
+  await tryGenerate('base_reference.png', async () => {
+    const baseRefPath = path.join(OUTPUT_BASE, 'base_reference.png');
+    baseRefUrl = await generateSDXL(BASE_PROMPT, baseRefPath);
+  });
+
+  if (!baseRefUrl) {
+    console.error('\n  Base reference failed — damage states require it, skipping img2img.');
+  }
 
   // ---- PART 2: Damage states ----
   console.log('\n--- PART 2: Damage States (5 states) ---');
   for (let state = 0; state < 5; state++) {
-    const statePrompt = `${BASE_PROMPT}, ${DAMAGE_STATE_ADDITIONS[state]}`;
-    const statePath = path.join(OUTPUT_BASE, `state_${state}.png`);
-    await generateImg2Img(statePrompt, baseRefUrl, statePath, 0.55);
+    const label = `state_${state}.png`;
+    await tryGenerate(label, async () => {
+      if (!baseRefUrl) throw new Error('No base reference available for img2img');
+      const statePrompt = `${BASE_PROMPT}, ${DAMAGE_STATE_ADDITIONS[state]}`;
+      const statePath = path.join(OUTPUT_BASE, `state_${state}.png`);
+      await generateImg2Img(statePrompt, baseRefUrl, statePath, 0.55);
+    });
   }
 
   // ---- PART 3: Loose parts ----
   console.log('\n--- PART 3: Loose Face Parts ---');
   for (const [partName, prompt] of Object.entries(PART_PROMPTS)) {
-    const rawPath = path.join(PARTS_DIR, `${partName}_raw.png`);
-    const finalPath = path.join(PARTS_DIR, `${partName}.png`);
-
-    const rawUrl = await generateSDXL(prompt, rawPath, 256, 256);
-    await removeBackground(rawUrl, finalPath);
-    console.log(`  Background removed: ${finalPath}`);
+    await tryGenerate(`parts/${partName}.png`, async () => {
+      const rawPath = path.join(PARTS_DIR, `${partName}_raw.png`);
+      const finalPath = path.join(PARTS_DIR, `${partName}.png`);
+      const rawUrl = await generateSDXL(prompt, rawPath, 256, 256);
+      await removeBackground(rawUrl, finalPath);
+      console.log(`  Background removed: ${finalPath}`);
+    });
   }
 
   // Right ear = flipped left ear
@@ -268,10 +327,12 @@ async function main() {
 
   // ---- PART 4: First-person fist sprites ----
   console.log('\n--- PART 4: Fist Sprites ---');
-  const leftFistRawPath = path.join(OUTPUT_BASE, 'fist_left_raw.png');
-  const leftFistPath = path.join(OUTPUT_BASE, 'fist_left.png');
-  const leftFistUrl = await generateSDXL(FIST_PROMPT, leftFistRawPath, 512, 512);
-  await removeBackground(leftFistUrl, leftFistPath);
+  await tryGenerate('fist_left.png', async () => {
+    const leftFistRawPath = path.join(OUTPUT_BASE, 'fist_left_raw.png');
+    const leftFistPath = path.join(OUTPUT_BASE, 'fist_left.png');
+    const leftFistUrl = await generateSDXL(FIST_PROMPT, leftFistRawPath, 512, 512);
+    await removeBackground(leftFistUrl, leftFistPath);
+  });
 
   const rightFistNote = path.join(OUTPUT_BASE, 'fist_right.txt');
   await fs.writeFile(rightFistNote, 'Mirror of fist_left.png — flip horizontally via sharp at build time');
@@ -280,19 +341,22 @@ async function main() {
   // ---- PART 5: Arena layers ----
   console.log('\n--- PART 5: Arena (Red Square) ---');
   for (const [layer, cfg] of Object.entries(ARENA_PROMPTS)) {
-    const arenaPath = path.join(ARENA_DIR, `${layer}.png`);
-    await generateSDXL(cfg.prompt, arenaPath, cfg.width, cfg.height);
+    await tryGenerate(`arena/${layer}.png`, async () => {
+      const arenaPath = path.join(ARENA_DIR, `${layer}.png`);
+      await generateSDXL(cfg.prompt, arenaPath, cfg.width, cfg.height);
+    });
   }
 
   // ---- PART 6: Impact effects ----
   console.log('\n--- PART 6: Impact Effects ---');
   for (const [effectName, prompt] of Object.entries(EFFECT_PROMPTS)) {
-    const rawPath = path.join(EFFECTS_DIR, `${effectName}_raw.png`);
-    const finalPath = path.join(EFFECTS_DIR, `${effectName}.png`);
-
-    const rawUrl = await generateSDXL(prompt, rawPath, 256, 256);
-    await removeBackground(rawUrl, finalPath);
-    console.log(`  Background removed: ${finalPath}`);
+    await tryGenerate(`effects/${effectName}.png`, async () => {
+      const rawPath = path.join(EFFECTS_DIR, `${effectName}_raw.png`);
+      const finalPath = path.join(EFFECTS_DIR, `${effectName}.png`);
+      const rawUrl = await generateSDXL(prompt, rawPath, 256, 256);
+      await removeBackground(rawUrl, finalPath);
+      console.log(`  Background removed: ${finalPath}`);
+    });
   }
 
   // ============================================================
@@ -318,30 +382,39 @@ async function main() {
     path.join(EFFECTS_DIR, 'clay_chunks.png'),
   ];
 
-  let allPresent = true;
+  let presentCount = 0;
   let totalSize = 0;
 
   for (const file of expectedFiles) {
     if (existsSync(file)) {
       const size = statSync(file).size;
       totalSize += size;
+      presentCount++;
       console.log(`  ✓ ${path.relative(process.cwd(), file)} (${(size / 1024).toFixed(1)} KB)`);
     } else {
       console.log(`  ✗ MISSING: ${path.relative(process.cwd(), file)}`);
-      allPresent = false;
     }
   }
 
   console.log('\n' + '-'.repeat(60));
-  console.log(`Total files: ${expectedFiles.length}`);
+  console.log(`Succeeded: ${succeeded.length} files`);
+  console.log(`Failed: ${failed.length} files`);
+  if (failed.length > 0) {
+    console.log(`  Failed files: ${failed.join(', ')}`);
+  }
+  console.log(`Present on disk: ${presentCount}/${expectedFiles.length}`);
   console.log(`Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
   console.log(`API calls made: ${apiCallCount}`);
   console.log(`Estimated cost: $${(apiCallCount * 0.11).toFixed(2)} (SDXL ~$0.11/run)`);
-  console.log(`Status: ${allPresent ? 'ALL FILES PRESENT ✓' : 'SOME FILES MISSING ✗'}`);
+  console.log(`Status: ${failed.length === 0 ? 'ALL SUCCEEDED ✓' : `${failed.length} FAILED ✗`}`);
   console.log('='.repeat(60));
+
+  if (failed.length > 0) {
+    process.exit(1);
+  }
 }
 
 main().catch((err) => {
-  console.error('\nFATAL ERROR:', err);
+  console.error('\nUNEXPECTED ERROR:', err);
   process.exit(1);
 });
