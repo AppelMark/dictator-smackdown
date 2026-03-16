@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate:der-groszer": "node scripts/generate-der-groszer.mjs",
+    "generate:all-assets": "node scripts/generate-all-assets.mjs"
   },
   "dependencies": {
     "@revenuecat/purchases-capacitor": "^12.2.4",
@@ -31,6 +33,7 @@
   },
   "devDependencies": {
     "canvas": "^3.2.1",
+    "dotenv": "^17.3.1",
     "sharp": "^0.34.5"
   }
 }
